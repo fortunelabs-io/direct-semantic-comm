@@ -1,0 +1,134 @@
+# Harness v1: tool pinning and task isolation.
+#
+# Task names below are the commands the Stage 0 gates are stated against in
+# ../todos/stage0_todo.md. Each maps to a capture script that does not exist
+# yet. Running one now fails loudly with "no such file", which is the intended
+# behaviour: a gate cannot pass because its script is missing.
+#
+# Order is enforced by data dependency, not here. Each capture script refuses to
+# start when the file it reads is absent.
+#
+# Every task invokes .venv/bin/python explicitly rather than relying on `python`
+# resolving through PATH. This is not style. mise sets VIRTUAL_ENV for a task
+# but does not guarantee this venv's bin directory reaches the front of an
+# inherited PATH, and on this machine ~/.mise.toml activates a second venv at
+# the home directory that wins. That venv also carries numpy, pandas and
+# matplotlib, so a gate would have imported successfully, produced a
+# well-formed result, and been wrong about which versions made it. The
+# interpreter a measurement ran under is part of the measurement.
+
+[tools]
+python = "3.12"
+# esp-idf: pinned to the version the Stage -1 contract declares. Pinning it here
+# is what turns that declaration into something enforced rather than asserted.
+# OPEN: the contract names ESP-IDF v5.x without a patch level.
+#
+# Capture engine toolchain: OPEN, follows Tier 0 gate 1. pico-sdk for RP2040,
+# arm-none-eabi-gcc plus CubeMX for STM32.
+
+[settings]
+# Re-enabled locally. ~/workspace/.mise.toml disables attestation verification
+# for the projects under it, and this harness inherits that unless it says
+# otherwise. A project whose discipline is separating measured from borrowed
+# does not silently accept an unverified interpreter.
+python.github_attestations = true
+
+[env]
+# Auto-activated on entering this directory. Every capture script and every test
+# runs against this interpreter and no other, which is what "task isolation"
+# means here: a result must not depend on whose shell ran it.
+_.python.venv = { path = ".venv", create = true }
+
+# Overrides ~/.mise.toml, which exports PYTHONPATH="{{config_root}}" from the
+# home directory and therefore puts $HOME on sys.path ahead of the standard
+# library in every shell on this machine. That makes any stray .py file in the
+# home directory importable ahead of the real module. Pointing it at this
+# directory bounds what is importable to this project.
+#
+# `mise run doctor` asserts this is still true.
+PYTHONPATH = "{{config_root}}"
+
+[tasks.setup]
+description = "install pinned host dependencies into the venv"
+run = ".venv/bin/python -m pip install -r requirements.txt"
+
+[tasks.doctor]
+description = "assert the environment is isolated before trusting any capture"
+run = ".venv/bin/python doctor.py"
+
+[tasks.idf]
+description = "run idf.py under the ESP-IDF interpreter rather than this venv"
+# idf.py carries `#!/usr/bin/env python`, so inside this directory it would run
+# under .venv, which has no IDF tooling. The isolation is working as intended
+# and this is the seam it needs: the IDF's own interpreter, named explicitly,
+# for the same reason every other task names .venv/bin/python explicitly.
+# Usage: mise run idf -- build
+run = '"$IDF_PYTHON_ENV_PATH/bin/python" "$IDF_PATH/tools/idf.py"'
+
+[tasks.freeze]
+description = "re-pin requirements.txt from the current venv, after a deliberate upgrade"
+run = ".venv/bin/python -m pip freeze --exclude-editable > requirements.txt"
+
+[tasks.toolchain]
+description = "Tier 0: blink builds and flashes on the selected capture part"
+run = "echo 'OPEN: capture engine part not selected, see README' && exit 1"
+
+# --- Tier 1: capture engine alone, on breakouts ---
+[tasks.rate]
+description = "7,143 conversion-ready edges per second, within one percent, ten minutes"
+run = ".venv/bin/python scripts/capture_rate.py"
+
+[tasks.jitter]
+description = "inter-timestamp interval standard deviation under 2 microseconds"
+run = ".venv/bin/python scripts/capture_jitter.py"
+
+[tasks.dropped]
+description = "zero dropped conversions, both channels, ten minutes"
+run = ".venv/bin/python scripts/capture_dropped.py"
+
+[tasks.stream]
+description = "114 kilobytes per second to disk with no gaps"
+run = ".venv/bin/python scripts/capture_stream.py"
+
+[tasks.wrap]
+description = "monotonic timestamps across the 32-bit microsecond wrap"
+run = ".venv/bin/python scripts/capture_wrap.py"
+
+# --- Tier 2: device under test, still on breakouts ---
+[tasks.phase]
+description = "ten thousand transitions decoded, zero invalid codes"
+run = ".venv/bin/python scripts/capture_phase.py"
+
+[tasks.link]
+description = "frames deliver, ESP-NOW version matches the contract, radio-disabled image asserted"
+run = ".venv/bin/python scripts/capture_link.py"
+
+# --- Tier 3: the fabricated harness ---
+[tasks.incoming]
+description = "per-board continuity and shorts, before any board is powered"
+run = ".venv/bin/python scripts/capture_incoming.py"
+
+[tasks.noop]
+description = "static load within 0.5 percent on both channels, all four edge sources present"
+run = ".venv/bin/python scripts/capture_noop.py"
+
+[tasks.negctl]
+description = "busy-loop fit under 2 percent, and the radio-off transmit integral collapses"
+run = ".venv/bin/python scripts/capture_negctl.py"
+
+[tasks.gain]
+description = "0.5 percent against the standard, 0.2 percent between channels, measured shunts recorded"
+run = ".venv/bin/python scripts/capture_gain.py"
+
+[tasks.timing]
+description = "commanded pulse widths reproduced within 2 microseconds or 0.5 percent"
+run = ".venv/bin/python scripts/capture_timing.py"
+
+[tasks.bandwidth]
+description = "duty cycle near 140 microseconds reproduced within 5 percent"
+run = ".venv/bin/python scripts/capture_bandwidth.py"
+
+[tasks.supply]
+description = "supply excursion under 0.5 percent across a transmit burst"
+run = ".venv/bin/python scripts/capture_supply.py"
+

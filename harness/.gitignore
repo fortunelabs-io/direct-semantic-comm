@@ -1,0 +1,61 @@
+# Harness v1
+#
+# Rule for this file: ignore by explicit extension, never by blanket wildcard
+# under results/. Every number that appears in a claim is read from a named file
+# there, and a pattern that silently swallows one is worse than a repository
+# carrying a stray artefact.
+
+# --- Python ---
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# --- mise ---
+# Machine-local overrides. .mise.toml itself is tracked: it is the pin.
+.mise.local.toml
+mise.local.toml
+
+# --- results ---
+# JSON is tracked. Raw captures are not: a ten-minute stream at 114 kB/s is
+# about 68 MB, and a Stage 2 campaign is far larger. They are retained on disk
+# where a gate calls for it, and referenced by the JSON, not committed.
+results/*.csv
+results/*.bin
+results/*.raw
+results/raw/
+
+# --- firmware, capture engine ---
+firmware/capture/build/
+firmware/capture/.pio/
+firmware/capture/cmake-build-*/
+*.uf2
+*.elf
+*.map
+
+# --- firmware, DUT (ESP-IDF) ---
+# sdkconfig is generated from sdkconfig.defaults, which is tracked and is where
+# the pinned configuration actually lives.
+firmware/dut/*/build/
+firmware/dut/*/sdkconfig
+firmware/dut/*/sdkconfig.old
+firmware/dut/*/managed_components/
+firmware/dut/*/dependencies.lock
+
+# --- KiCad ---
+# Project, schematic, layout and the fabrication outputs are tracked.
+*-backups/
+*.kicad_prl
+*.kicad_sch-bak
+*.kicad_pcb-bak
+fp-info-cache
+*.lck
+~*.*
+
+# --- OS and editor ---
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/

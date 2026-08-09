@@ -1,0 +1,21 @@
+# Repository root.
+#
+# Scope of this file: what is not specific to the harness. Anything
+# harness-shaped belongs in harness/.gitignore, next to the reasoning for its
+# neighbours, and that file states its own rule — ignore by explicit extension,
+# never by blanket wildcard under results/.
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Editor ---
+.vscode/settings.json
+.idea/
+*.swp
+*~
+
+# --- Agent tooling ---
+# .claude/settings.json is shared configuration and tracked when it exists.
+# The .local variant is machine-specific.
+.claude/settings.local.json

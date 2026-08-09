@@ -1,0 +1,81 @@
+name: Gate
+description: A claim with a command and a criterion that can fail. Open this BEFORE the run.
+title: "S0 <handle> — <the claim, in the specification's own words>"
+labels: ["type:gate", "stage:0"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open this **before** running the command. The prediction field is the reason
+        this issue exists; a prediction added after the run is worth nothing and is
+        not backdated. See `docs/sop/issue_sop.md`.
+
+  - type: input
+    id: handle
+    attributes:
+      label: Handle
+      description: The mise task name. This is the gate's identity everywhere.
+      placeholder: jitter
+    validations:
+      required: true
+
+  - type: input
+    id: spec
+    attributes:
+      label: Specification
+      description: File and heading. The criterion is not restated here.
+      placeholder: todos/stage0_todo.md — "The timestamp is taken at the edge and not after the read"
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      placeholder: mise run jitter
+    validations:
+      required: true
+
+  - type: input
+    id: produces
+    attributes:
+      label: Produces
+      description: The named file every later claim will be read from.
+      placeholder: harness/results/stage0_jitter.json
+    validations:
+      required: true
+
+  - type: textarea
+    id: prediction
+    attributes:
+      label: Prediction, recorded before the run
+      description: >
+        What the result will be, and what the recognisable failure signature is.
+        A prediction with a direction but no value is weaker than one with both.
+      placeholder: |
+        Standard deviation under 2 us.
+        Failure signature: near 73 us means the read is still inside the interrupt,
+        which is the read duration at 400 kHz with the pointer retained.
+    validations:
+      required: true
+
+  - type: input
+    id: blocked_by
+    attributes:
+      label: Blocked by
+      description: The gate issue above this one, if any. Nothing below an open gate gets run.
+      placeholder: "#4"
+
+  - type: textarea
+    id: closing
+    attributes:
+      label: Closing evidence
+      description: Filled in at close. The issue is closed by `Closes #N` in the gate commit, not by the button.
+      value: |
+        - [ ] Test exited 0 with no output
+        - [ ] `mise run doctor` clean for the run that produced the file
+        - [ ] Results file committed
+        - [ ] Prediction held / did not hold:
+        - [ ] Closing commit:
+    validations:
+      required: false

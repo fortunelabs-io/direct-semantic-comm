@@ -1,0 +1,48 @@
+name: Bench action
+description: Physical work with no command and no criterion of its own.
+title: "S0 <handle> — <what is being done at the bench>"
+labels: ["type:bench", "stage:0"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A bench action has no pass criterion. It is closed by naming the gate that
+        proved it — a solder joint is proved by Tier 3 passing, not by inspecting
+        the joint.
+
+  - type: input
+    id: handle
+    attributes:
+      label: Handle
+      placeholder: fabricate
+    validations:
+      required: true
+
+  - type: input
+    id: spec
+    attributes:
+      label: Specification
+      placeholder: 'todos/stage0_todo.md — "Bench action: layout, review, fabricate, assemble"'
+    validations:
+      required: true
+
+  - type: textarea
+    id: work
+    attributes:
+      label: What is done
+      description: Steps, and any requirement that must be checked before a point of no return.
+      placeholder: |
+        High-side sensing both channels; Kelvin sense at the shunt pads carrying no
+        load current; datasheet input filter. Checked at review before Gerbers are
+        exported, because after export the next check costs a board spin.
+    validations:
+      required: true
+
+  - type: input
+    id: proved_by
+    attributes:
+      label: Proved by
+      description: The gate issue that will demonstrate this was done correctly. Required.
+      placeholder: "#12 (noop)"
+    validations:
+      required: true

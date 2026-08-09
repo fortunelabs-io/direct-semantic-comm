@@ -50,7 +50,7 @@ Option 3 is the only point in this design space where the cost paid at S, the co
 
 ### 1.3 The question
 
-> On two ESP32 nodes linked by ESP-NOW, does a learned intermediate representation actually clear both binding constraints at once, in measured joules and milliseconds, once the sender's encode cost and the receiver's decode cost are both charged against the frames it saves?
+> On two ESP32-S3 nodes linked by ESP-NOW, does a learned intermediate representation actually clear both binding constraints at once, in measured joules and milliseconds, once the sender's encode cost and the receiver's decode cost are both charged against the frames it saves?
 
 Everything below serves that question.
 
@@ -294,9 +294,11 @@ The sensors are INA226 parts, chosen as catalogue components rather than as an i
 Sensor configuration, all of it forced by the datasheet rather than chosen:
 
 - **Shunt-only continuous mode** at the fastest conversion time, 140 microseconds, with averaging set to one. The power-on default is 1.1 milliseconds on each of shunt and bus with shunt-and-bus continuous mode, roughly 2.2 milliseconds per pair, which is longer than an entire 8-byte transmission and would render the transmit phase invisible.
-- **Rail voltage treated as a constant**, measured once per run rather than converted per sample. This is what buys shunt-only mode and halves the conversion budget. It is admissible because the rail is regulated; it is checked at Stage 0 and not assumed.
-- **High-speed I2C.** A 16-bit register read at 400 kHz fast mode takes on the order of a hundred and twenty microseconds against a hundred and forty microsecond conversion. Fast mode drops conversions. The device supports up to 2.94 MHz.
+- **Supply voltage measured once per run, DUT rail computed per sample.** Only the supply upstream of the shunt is treated as constant. The rail the DUT actually sees is that supply minus the shunt drop, which at 0.1 ohm and a 330 mA transmit peak is 33 millivolts, one percent. Treating the DUT rail itself as constant would put that one percent straight into every transmit-phase power figure. The correction is exact and free, since the current is already measured: the DUT rail per sample is the supply minus the measured current times the measured shunt value. A periodic bus-voltage conversion, roughly one sample in a hundred, monitors the supply assumption at one percent of the conversion budget rather than assuming it.
+- **Fast-mode I2C at 400 kHz, one bus per channel, with the register pointer retained.** The datasheet states the pointer persists until a write changes it, so repeated reads of the shunt voltage register do not resend it. That brings a read to roughly seventy-three microseconds against a hundred and forty microsecond conversion, about half the budget, and two channels on two buses fit. Rewriting the pointer each time costs eighty-six percent and two channels on one bus fails outright. High-speed mode at 2.94 MHz is the fallback if measured margin is worse than this arithmetic, not the starting point.
 - **Alert pin configured as Conversion Ready** (the CNVR bit of the Mask/Enable register), routed into the capture engine alongside the phase markers. The INA226 timestamps nothing and I2C reads are not deterministic, so without a hardware edge per completed conversion there is no honest way to place a sample in time. This is the interface between the catalogue sensor and the part of the harness this project owns.
+- **Alert latch set to transparent**, so the conversion-ready flag self-clears and no Mask/Enable read is needed per conversion. This halves the edge rate into the capture engine and removes one bus transaction per sample.
+- **Shunt voltage register only.** Bus voltage is not converted, the calibration register is never programmed, and current is computed on the host where the shunt value is auditable.
 - **Kelvin, four-wire connection to the shunt**, per the datasheet layout guidance.
 
 Two limits are stated here rather than discovered later:
@@ -345,10 +347,14 @@ The sufficiency and collapse constraints of 4.6 carry over unchanged in form but
 
 Each stage is named by the condition it can kill and ordered by the cost of killing it, not by the order components appear in the system. The last column is the one that makes the ordering load-bearing: it states what becomes void if that stage fails after later stages have already been paid for.
 
+**The harness build sits outside this ladder.** Constructing the instrument of 4.7 costs weeks and a fabrication run, which is more than Stage 1 and possibly more than Stage 2, so treating it as a stage would break the ordering the table depends on. It is capital expenditure, not a hypothesis: it kills no condition and answers no question. Stage 0 is the harness's acceptance test, not its construction, and as a gate it costs days once the instrument exists.
+
+That split leaves one exposure worth naming. A phase that produced its own artefact and then judged it would have no independent gate, and the parent build was bitten by exactly that shape: a probe that passed for a full run while comparing the wrong quantity, written by the same hand as the thing it probed. The mitigation is that Stage 0's instrument checks reference standards outside the harness, a precision resistor and an independent voltmeter for gain, the device under test's own clock for timing. The validator is a resistor rather than a judgement, and that is what makes self-validation admissible here.
+
 | Stage | What it can kill | Cost | Void if it fails late |
 |---|---|---|---|
 | -1 | The packet-count term exists at all | Arithmetic, no hardware | The entire H1 argument, and with it the reason to prefer Option 3 over a byte-count argument |
-| 0 | The harness measures the thing it is pointed at, on one honest timebase | Harness build plus validation | Every number in the project |
+| 0 | The harness measures the thing it is pointed at, on one honest timebase | Days, once the harness exists | Every number in the project |
 | 1 | The available range is worth chasing | One cheap run | The direction; Stages 2 onward are then unfunded |
 | 2 | The frame boundary has a step, separable from the wake and retransmission terms | The long sweep | The cost model's structure |
 | 3 | The two-sided ledger favors the latent | Encoder training and deployment | H_ledger |
@@ -365,9 +371,11 @@ Do Encoder_S and Decoder_R agree on quantization scheme, scale granularity, and 
 
 What is the width ratio between the transmitted latent and what the decoder expects, per the note in 4.8?
 
-What shunt value keeps the expected transmit peak on scale, and where does that place the resolution floor? This is arithmetic over the INA226's full-scale shunt voltage and least-significant-bit against the chip's expected active current, and it produces the stated blind spot of 4.7 as a number rather than a hope.
+What shunt value keeps the expected transmit peak on scale, and where does that place the resolution floor? This is arithmetic over the INA226's full-scale shunt voltage and least-significant-bit against the chip's active current, and it produces the stated blind spot of 4.7 as a number rather than a hope. Closed: 0.1 ohm on both channels, high-side, resolving transmit to over thirteen thousand counts and placing deep sleep at a third of one count. Recorded with its derivation in the harness signal inventory and timing budget.
 
-Deliverable: one table of declared constants and five answers. Cost: an afternoon and no equipment.
+Deliverable: one table of declared constants and five answers, plus the harness signal inventory and timing budget, which fixes the capture engine class and the I2C bus count before any part is ordered. Cost: an afternoon and no equipment.
+
+**Nothing downstream begins while any of the five is open, and that includes building the harness.** This stage exists to kill the direction for the price of an afternoon; the harness build is the first substantial expenditure the project makes. Starting the expensive thing while the free gate is still open inverts the ordering the rest of this section depends on, and the fact that the instrument could be specified without the answer does not restore it.
 
 **Stage 0: instrument validation, three halves.** Before any experimental claim, prove the meter. Earlier drafts named two halves; the metering choice of 4.7 adds a third, and none may be skipped.
 

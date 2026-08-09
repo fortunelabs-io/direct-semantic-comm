@@ -20,19 +20,39 @@ time rather than a measurement of it. Gap 1 in the thinkbook, the absence of any
 published two-sided MCU energy ledger, may persist partly for that reason: the
 standard instrument meters one node, so the published work meters one node.
 
-Two further pressures make the dependency unacceptable rather than merely
+Four further pressures make the dependency unacceptable rather than merely
 inconvenient.
 
-Layer 4 certification is a product. Its mechanism is that the mark is owned and
-the test is real. A test that can only be run on another vendor's development
-tool rents the foundation of that product, and is exposed to that tool's own
-lifecycle; at least one distributor already lists the reference instrument as
-retired.
+**Availability.** Landed cost of the reference instrument in Indonesia is around
+five million rupiah per channel, sourced from Europe. Two channels is ten
+million and one point of failure with an intercontinental replacement path.
+Stage 2 is a long campaign, a thousand packets per payload size across two nodes.
+An instrument failure mid-campaign costs the campaign and the schedule, not the
+instrument. Ten fabricated boards make a failure a swap. The operating principle
+the business already holds for people, that solo execution across parallel
+streams defeats the purpose of diversification, applies to instruments and is
+sharper there, because an instrument cannot be reasoned with once it is dead.
 
-Publishing Stage 0 through Stage 2 data first is meant to make this project the
-reference for those measurements. Data whose reproduction requires buying a
-specific vendor's tool makes the project a reference for the numbers while
-someone else holds the gate.
+**Unattributable anomalies.** A closed instrument cannot be interrogated. When a
+measurement looks wrong, the question is whether the radio or the meter produced
+it, and with a closed instrument that question has no answer short of buying a
+second one. A project whose entire discipline is separating measured from
+borrowed cannot afford an unattributable term inside its own instrument.
+
+**Certification adoption.** Layer 4 certification is a product, and its mechanism
+is that the mark is owned and the test is real. A test that only runs on another
+vendor's development tool taxes adoption of this project's own standard, in
+someone else's favour, and is exposed to that tool's lifecycle; at least one
+distributor already lists the reference instrument as retired. A rig that any
+partner can fabricate is a rig certification can scale on.
+
+**Reference status and self-qualification.** Publishing Stage 0 through Stage 2
+data first is meant to make this project the reference for those measurements.
+Data whose reproduction requires buying a specific vendor's tool makes the
+project a reference for the numbers while someone else holds the gate. A
+published harness design is also a genuinely usable artefact rather than a
+teaser: anyone who fabricates it has self-qualified as a serious prospect, which
+a bought instrument can never do.
 
 ## Alternatives considered
 
@@ -77,9 +97,14 @@ Stage 0 becomes heavier and moves onto the critical path. It now validates the
 instrument as well as the wiring, against references outside the harness: gain
 and offset against a precision resistor and an independent voltmeter, timing
 against pulse widths commanded by the device under test's own clock, bandwidth
-against a commanded toggling load near the conversion time. A borrowed
-commercial meter may serve as an optional cross-check on the single-rail case;
-it is not a dependency and does not enter the method.
+against a commanded toggling load near the conversion time.
+
+Those references are standards, and that is deliberate. An earlier draft of this
+entry offered agreement with a commercial meter as the stronger Stage 0 claim.
+That was wrong. Agreement between two instruments is a cross-check; traceability
+runs to standards, and a development tool is not a calibration instrument and
+carries no certificate. A precision resistor and a crystal-derived pulse train
+are the better reference, not the affordable substitute for one.
 
 Stage 0 cannot be skipped or shortened. Until its deliverable exists, the
 harness is not an instrument and nothing measured with it counts.
@@ -93,5 +118,10 @@ Concentrates more of the project on one person at a moment when the thinkbook is
 also live. That is a real exposure, named here rather than discovered later, and
 it is the argument for scoping the first version as narrowly as this entry does.
 
+Cost is bill of materials plus spins, not the fabrication price of the bare
+boards. It remains an order of magnitude below the instrument path.
+
 Watch for: scope creep from timebase into front end. Every ranging feature that
-arrives before Stage 2 data asks for it is this entry being violated.
+arrives before Stage 2 data asks for it is this entry being violated. Watch also
+for ten boards becoming ten revisions. Ten identical boards are spares; ten
+variants are thrash.

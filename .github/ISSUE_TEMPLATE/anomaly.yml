@@ -1,0 +1,43 @@
+name: Anomaly
+description: Something the specification did not predict.
+title: "<what was observed>"
+labels: ["type:anomaly"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        An anomaly is never closed silently. It closes by a `spec` commit that folds
+        it into the specification, an ADR that decides it, or a written statement
+        that it is out of scope with the reason.
+
+  - type: input
+    id: under
+    attributes:
+      label: Seen under
+      description: The gate issue this appeared during, and the file it appeared in.
+      placeholder: "#8 (rate), harness/results/stage0_rate.json"
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: What was observed
+      description: The measurement, and the file it was read from. Nothing recalled, nothing retyped.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What the specification predicted instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproducible
+    attributes:
+      label: Reproducible?
+      description: Whether it survives a re-run, and whether it moves with any condition.
+      placeholder: |
+        Seen on 3 of 3 runs. Does not move with cable length. Moves with bus speed.

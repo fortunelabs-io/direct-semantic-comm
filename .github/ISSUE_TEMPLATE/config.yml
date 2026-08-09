@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: The specification
+    url: https://github.com/fortunelabs-io/direct-semantic-comm/blob/main/todos/stage0_todo.md
+    about: Gates, commands, criteria and predictions live here. Do not restate them in an issue.
+  - name: Issue SOP
+    url: https://github.com/fortunelabs-io/direct-semantic-comm/blob/main/docs/sop/issue_sop.md
+    about: What gets an issue, what does not, and how one is closed.

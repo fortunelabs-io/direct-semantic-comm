@@ -23,8 +23,12 @@ python = "3.12"
 # is what turns that declaration into something enforced rather than asserted.
 # OPEN: the contract names ESP-IDF v5.x without a patch level.
 #
-# Capture engine toolchain: OPEN, follows Tier 0 gate 1. pico-sdk for RP2040,
-# arm-none-eabi-gcc plus CubeMX for STM32.
+# Capture engine toolchain: arm-none-eabi-gcc plus CubeMX. Family decided in
+# docs/adr/2026-08-09-capture-engine-is-stm32-part-still-open.md on sourcing and
+# established skill, not on capability: RP2040 met the four requirements too.
+#
+# Versions stay OPEN because they follow the part, and the part is not selected.
+# Tier 0 gate 1 is not closed by the family choice.
 
 [settings]
 # Re-enabled locally. ~/workspace/.mise.toml disables attestation verification

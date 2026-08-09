@@ -24,7 +24,7 @@ Tier 0, second gate. Written down before firmware exists. **All three are open.*
 
 | Item | Requirement | Value |
 |---|---|---|
-| Capture engine | two independent I2C masters at 400 kHz, ten GPIO with edge interrupt, microsecond timer, USB device | *open, Tier 0 gate 1* |
+| Capture engine | two independent I2C masters at 400 kHz **on separate pins**, ten GPIO with edge interrupt, microsecond timer, USB device | STM32, *part open, Tier 0 gate 1* |
 | Current sensor | INA226, Alert pin broken out | *open* |
 | Shunt | 0.1 ohm, 0.1 percent, high side, Kelvin | fixed by the timing budget |
 | DUT | ESP32-S3 dev board, native USB-serial-JTAG | *open*, 2 off |

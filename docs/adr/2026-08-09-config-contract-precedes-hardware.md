@@ -9,7 +9,7 @@ The packet-count argument (H1) is the reason to prefer a learned intermediate
 representation over a byte-count argument that would hold trivially. That
 argument requires `n(p_raw) - n(p_lat) >= 1`. Whether it holds is arithmetic
 over the ESP-NOW frame limit, the sensor modality, and the candidate bottleneck
-width — all declared constants, none of them measurements.
+width, all of them declared constants and none of them measurements.
 
 If nothing is decided, that arithmetic gets done implicitly at Stage 3, after a
 harness has been bought, a board flashed, and an encoder trained, at roughly a
@@ -30,13 +30,13 @@ bridge before a parameter existed.
 
 ## Decision
 
-Stage −1 exists and precedes all hardware work. It answers three questions from
+Stage -1 exists and precedes all hardware work. It answers three questions from
 declared constants only: whether the packet-count term is non-zero for the
 chosen modality and bottleneck width; whether Encoder_S and Decoder_R agree on
 quantization scheme, scale granularity, and tensor layout; and what the width
 ratio is between the transmitted latent and what the decoder expects.
 
-A failure at Stage −1 is not a setback. It re-scopes the project to a
+A failure at Stage -1 is not a setback. It re-scopes the project to a
 byte-count claim, or changes the modality, or changes `L` by changing ESP-NOW
 version, before anything has been spent.
 

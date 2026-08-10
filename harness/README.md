@@ -59,7 +59,7 @@ Entering this directory activates `.venv` at the pinned interpreter. Every captu
 | `firmware/dut/` | ESP32-S3, one image per role | empty, Tier 2 |
 | `scripts/` | touch hardware, may prompt, write JSON | empty, see below |
 | `tests/` | pure, read JSON, silent on success | empty, see below |
-| `hardware/` | KiCad project and the review checklist | checklist only |
+| `hardware/` | KiCad project, the review checklist, and the checks that run against both | checker and CI in place, KiCad project not started |
 | `results/` | JSON tracked, raw captures not | empty |
 | `assets/` | figures, `harness_` prefixed | empty |
 

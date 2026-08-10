@@ -73,6 +73,42 @@ run = '"$IDF_PYTHON_ENV_PATH/bin/python" "$IDF_PATH/tools/idf.py"'
 description = "re-pin requirements.txt from the current venv, after a deliberate upgrade"
 run = ".venv/bin/python -m pip freeze --exclude-editable > requirements.txt"
 
+# --- hardware: the PCB, not a gate ---
+#
+# None of the five tasks below is a gate. They touch no hardware, write no
+# results/*.json, and close nothing in ../todos/stage0_todo.md. A clean ERC and
+# a clean DRC are a precondition for spending money on fabrication, not evidence
+# about the harness; the Tier 3 gates are what prove the board works.
+#
+# They run under .venv/bin/python for the same reason every task above does,
+# although hardware/check.py imports nothing outside the standard library. The
+# thing actually pinned here is kicad-cli, which check.py asserts is on the
+# 9.0.x series before it will report anything. .github/workflows/hardware.yml
+# runs the identical checker under an identical pin, so "clean at the desk" and
+# "clean in CI" are one claim rather than two that happen to agree.
+
+[tasks.erc]
+description = "hardware: electrical rules on the schematic"
+run = ".venv/bin/python hardware/check.py erc"
+
+[tasks.drc]
+description = "hardware: design rules on the layout, and parity with the schematic"
+run = ".venv/bin/python hardware/check.py drc"
+
+[tasks.hw]
+description = "hardware: erc then drc, both run even if the first fails"
+run = ".venv/bin/python hardware/check.py check"
+
+[tasks.fab]
+description = "hardware: write Gerbers, drill, position and BOM into hardware/fab/"
+run = ".venv/bin/python hardware/check.py fab"
+
+[tasks.fab-parity]
+description = "hardware: assert committed fabrication outputs match the board file"
+# Run before pushing a harness-v<N>-fab tag. The tag claims ten boards can be
+# compared against one commit, and this is what makes that claim checkable.
+run = ".venv/bin/python hardware/check.py fab-parity"
+
 [tasks.toolchain]
 description = "Tier 0: blink builds and flashes on the selected capture part"
 run = "echo 'OPEN: capture engine part not selected, see README' && exit 1"

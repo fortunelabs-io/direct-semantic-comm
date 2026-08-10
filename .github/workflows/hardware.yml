@@ -1,0 +1,108 @@
+# Electrical and design rule checks for the harness PCB.
+#
+# This workflow does not hold a second opinion about the board. It reproduces
+# the desk: the same kicad-cli series, the same checker, the same severity
+# policy, so that "it passed locally" and "it passed in CI" are the same claim
+# rather than two claims that happen to agree. The checker is
+# harness/hardware/check.py and every decision it makes lives there, not here.
+#
+# The fabrication tag is checked by hardware-fab.yml, which is a different
+# question asked at a different moment.
+
+name: hardware
+
+on:
+  push:
+    paths:
+      - 'harness/hardware/**'
+      - '.github/workflows/hardware.yml'
+  pull_request:
+    paths:
+      - 'harness/hardware/**'
+      - '.github/workflows/hardware.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hardware-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rules:
+    name: ERC and DRC
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ERC, DRC and schematic parity
+        id: check
+        shell: bash
+        run: |
+          # Pinned to the patch, matching the 9.0.x series asserted in
+          # check.py. The digest below is what this tag resolved to when the
+          # workflow was written; if the tag ever moves, kicad-cli --version
+          # still has to satisfy the series pin or the checker exits 3.
+          #   docker.io/kicad/kicad@sha256:cef4a572df1465b98fa63cdac88780e0f8d39f03c5493434802bcd92f62123fb
+          #
+          # --user maps the container to the runner so the reports it writes
+          # can be read back out and uploaded. HOME is redirected because that
+          # user has no home inside the image, and kicad-cli wants somewhere to
+          # put the configuration the checker then neutralises.
+          #
+          # The exit code is captured rather than allowed to abort the step,
+          # because which of the three failures fired is the whole point of the
+          # checker and `set -e` would throw it away.
+          set +e
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work \
+            kicad/kicad:9.0.9 \
+            python3 harness/hardware/check.py check 2>&1 | tee /tmp/hardware.log
+          status="${PIPESTATUS[0]}"
+          set -e
+          echo "$status" > /tmp/hardware.status
+          exit "$status"
+
+      - name: Explain the outcome
+        if: always()
+        shell: bash
+        run: |
+          status="$(cat /tmp/hardware.status 2>/dev/null || echo unknown)"
+          {
+            echo '## ERC and DRC'
+            echo
+            echo '```'
+            cat /tmp/hardware.log 2>/dev/null || echo '(the checker produced no output)'
+            echo '```'
+            echo
+            if [ "$status" = "0" ]; then
+              echo 'Clean at error and warning. This says the layout is'
+              echo 'manufacturable and matches its schematic. It does not say the'
+              echo 'schematic is right — see `harness/hardware/review_checklist.md`,'
+              echo 'which is checked by a person before Gerbers are exported.'
+            else
+              echo "Not clean — the checker exited **$status**."
+              echo
+              echo '| exit | meaning |'
+              echo '| --- | --- |'
+              echo '| 1 | violations found — the design is wrong |'
+              echo '| 2 | nothing to check — no KiCad project exists yet |'
+              echo '| 3 | cannot check — kicad-cli missing, off the pin, or more than one project |'
+              echo
+              echo 'Exit 2 fails deliberately. A checker that returns success for a'
+              echo 'board that does not exist reports a closed gate on work never done.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: erc-drc-reports
+          path: harness/hardware/reports/
+          if-no-files-found: ignore
+          retention-days: 90

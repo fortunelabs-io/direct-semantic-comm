@@ -1,0 +1,95 @@
+# The fabrication tag, checked at the moment it is pushed.
+#
+# docs/sop/git_sop.md puts a `harness-v<N>-fab` tag on the commit carrying the
+# exact Gerbers sent out, so that when board seven behaves differently from
+# board two, the tag is what says they should not have. That is only worth
+# something if the outputs committed under the tag are the ones this board file
+# produces. A stale Gerber and a fresh one are indistinguishable to review, and
+# a diff cannot tell them apart either — regenerating and comparing is the only
+# thing that can.
+#
+# Separate from hardware.yml because it is a different question asked at a
+# different moment, and because a path filter and a tag filter in one `on:`
+# block interact in ways that are easy to get quietly wrong.
+
+name: hardware fab tag
+
+on:
+  push:
+    tags:
+      - 'harness-v*-fab'
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: Rules and fabrication parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ERC, DRC, and parity against the committed outputs
+        id: check
+        shell: bash
+        run: |
+          # Same pin and the same invocation as hardware.yml. See the comments
+          # there for why --user and HOME are set the way they are.
+          run_check () {
+            docker run --rm \
+              --user "$(id -u):$(id -g)" \
+              -e HOME=/tmp \
+              -v "$GITHUB_WORKSPACE:/work" \
+              -w /work \
+              kicad/kicad:9.0.9 \
+              python3 harness/hardware/check.py "$1" 2>&1
+          }
+
+          set +e
+          run_check check | tee /tmp/fab.log
+          rules="${PIPESTATUS[0]}"
+          echo | tee -a /tmp/fab.log
+          run_check fab-parity | tee -a /tmp/fab.log
+          parity="${PIPESTATUS[0]}"
+          set -e
+
+          # Both must hold at a fabrication tag, and each is captured on its own
+          # line. Grouping the two runs into one pipeline would have reported
+          # only the second, so rules-dirty with outputs-clean would have passed
+          # — which is one of the two failures this job exists to catch.
+          status=$(( rules > parity ? rules : parity ))
+          echo "$status" > /tmp/fab.status
+          exit "$status"
+
+      - name: Explain the outcome
+        if: always()
+        shell: bash
+        run: |
+          status="$(cat /tmp/fab.status 2>/dev/null || echo unknown)"
+          {
+            echo "## Fabrication tag \`${GITHUB_REF_NAME}\`"
+            echo
+            echo '```'
+            cat /tmp/fab.log 2>/dev/null || echo '(the checker produced no output)'
+            echo '```'
+            echo
+            if [ "$status" = "0" ]; then
+              echo 'The committed fabrication outputs are the ones this board file'
+              echo 'produces, and the board is clean at error and warning. Ten boards'
+              echo 'built from these outputs can be compared against this commit.'
+            else
+              echo "Failed — exit **$status**. Do not send these outputs for"
+              echo 'fabrication. Re-run `mise run fab`, commit, and move the tag.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the outputs that were checked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fab-${{ github.ref_name }}
+          path: |
+            harness/hardware/fab/
+            harness/hardware/reports/
+          if-no-files-found: ignore
+          retention-days: 365

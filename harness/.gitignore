@@ -54,6 +54,16 @@ fp-info-cache
 *.lck
 ~*.*
 
+# ERC and DRC reports. Derived from tracked source by a pinned checker, so any
+# commit can regenerate its own; a tracked report would be a number living in
+# two places, which is the failure the git SOP exists to prevent. CI uploads
+# them as artefacts where a specific run needs to be cited.
+#
+# hardware/fab/ is deliberately absent from this list. Those are tracked, they
+# are what a fabricator receives, and `mise run fab-parity` is what asserts the
+# committed copies are the ones the board file produces.
+hardware/reports/
+
 # --- OS and editor ---
 .DS_Store
 Thumbs.db

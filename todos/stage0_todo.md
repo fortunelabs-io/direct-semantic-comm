@@ -140,8 +140,18 @@ device.
 **Produces.** `results/stage0_toolchain.json`, and the part named in
 `.mise.toml`.
 
-**Passes when.** A blink builds and flashes on the selected part, and the two I2C
-peripherals are recorded from the datasheet rather than from a product page.
+**Passes when.** The clock plan holds against every limit transcribed from the
+part's datasheet, and the two I2C peripherals are recorded from the datasheet
+rather than from a product page, on separate pins with their alternate function
+numbers.
+
+**Why this is checkable with nothing powered.** The datasheet limits are
+transcribed into `firmware/capture/timing_budget.h` as constants, and the clock
+plan is asserted against them at compile time. The header is integer arithmetic
+with nothing target-specific in it, so the host compiler evaluates the same
+assertions the cross compiler will, and a plan that violates a datasheet limit
+fails to compile. That is a criterion that can fail without a board, which is
+what this tier requires.
 
 **Cost of skipping.** Every layout decision below is drawn against a part that
 may not have the peripherals.
@@ -174,6 +184,26 @@ Nothing here needs the device under test. The load is a resistor. What is under
 test is whether the timing budget survives real interrupt latency and real driver
 overhead, and four of the seven findings that can kill the design are caught in
 this tier, before any fabrication is ordered.
+
+### Code built for the selected part runs on it
+
+**Claim.** The cross toolchain produces an image that the selected part executes.
+
+**Command.** `mise run blink`
+
+**Produces.** `results/stage0_blink.json`
+
+**Passes when.** A blink builds with `arm-none-eabi-gcc`, flashes over SWD, and
+is observed running on the board.
+
+**Why this is the first gate of Tier 1 and not the last of Tier 0.** It is the
+first item in this specification that puts a part under power, which is the line
+Tier 0 is defined by. It was written as half of the Tier 0 gate's criterion until
+that gate was split; the argument is in the anomaly that split it.
+
+**Cost of skipping.** Every Tier 1 capture below runs on an image nobody has
+confirmed the part will execute, so a failure to run is indistinguishable from a
+failure to measure.
 
 ### The sensor reaches its rated conversion rate
 

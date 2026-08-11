@@ -23,12 +23,20 @@ python = "3.12"
 # is what turns that declaration into something enforced rather than asserted.
 # OPEN: the contract names ESP-IDF v5.x without a patch level.
 #
-# Capture engine toolchain: arm-none-eabi-gcc plus CubeMX. Family decided in
-# docs/adr/2026-08-09-capture-engine-is-stm32-part-still-open.md on sourcing and
-# established skill, not on capability: RP2040 met the four requirements too.
+# Capture engine toolchain: arm-none-eabi-gcc, cmake, ninja and st-flash. No
+# CubeMX and no vendor HAL, per
+# docs/adr/2026-08-12-capture-engine-firmware-is-bare-metal.md.
 #
-# Versions stay OPEN because they follow the part, and the part is not selected.
-# Tier 0 gate 1 is not closed by the family choice.
+# Family decided in docs/adr/2026-08-09-capture-engine-is-stm32-part-still-open.md
+# on sourcing and established skill, not on capability: RP2040 met the four
+# requirements too. The part is fixed to STM32F411CEU6 by
+# docs/adr/2026-08-12-capture-engine-part-is-stm32f411ceu6.md.
+#
+# OPEN: arm-none-eabi-gcc is not pinned here yet. It is not installed on this
+# machine, so pinning a version would record a claim about a toolchain that has
+# never run. The pin lands with the first build that actually happens, and until
+# then `mise run toolchain` fails at its preflight rather than silently building
+# against whatever the host provides.
 
 [settings]
 # Re-enabled locally. ~/workspace/.mise.toml disables attestation verification
@@ -111,7 +119,28 @@ run = ".venv/bin/python hardware/check.py fab-parity"
 
 [tasks.toolchain]
 description = "Tier 0: blink builds and flashes on the selected capture part"
-run = "echo 'OPEN: capture engine part not selected, see README' && exit 1"
+# The part named here is what the specification means by "the part named in
+# .mise.toml": STM32F411CEU6, UFQFPN48, LCSC C60420, fixed by
+# docs/adr/2026-08-12-capture-engine-part-is-stm32f411ceu6.md.
+#
+# Two steps, in this order and not collapsed into one. The script captures
+# and may prompt; the test is pure, reads the file the script wrote, and is
+# silent on success. A gate closes on the test's exit code, so the test has
+# to be able to fail on a file the script itself was happy to write.
+run = [
+    "bash scripts/toolchain.sh",
+    ".venv/bin/python tests/test_toolchain.py",
+]
+
+[tasks.blink]
+description = "Tier 1: code built for the selected part runs on it"
+# Split out of `toolchain` by issue #20. Flashing is powering, and Tier 0 is
+# defined as nothing powered, so this is the first gate in the specification
+# that puts a part under power. Needs arm-none-eabi-gcc, st-flash and a board.
+run = [
+    "bash scripts/blink.sh",
+    ".venv/bin/python tests/test_blink.py",
+]
 
 # --- Tier 1: capture engine alone, on breakouts ---
 [tasks.rate]

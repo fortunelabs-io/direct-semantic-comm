@@ -15,11 +15,13 @@
 #include "register_map.h"
 #include "timing_budget.h"
 
-/* Table 9, DocID026289 Rev 4. */
-#define AF_I2C1_SCL_PB6   4UL
-#define AF_I2C1_SDA_PB7   4UL
-#define AF_I2C3_SCL_PA8   4UL
-#define AF_I2C3_SDA_PB4   9UL
+/* Alternate function numbers come from sensor.h, which is also what the
+ * Tier 0 gate publishes as its datasheet record. One definition, so the
+ * record cannot claim an AF the firmware does not program. */
+#define AF_I2C1_SCL_PB6   ((uint32_t) I2C1_SCL_AF)
+#define AF_I2C1_SDA_PB7   ((uint32_t) I2C1_SDA_AF)
+#define AF_I2C3_SCL_PA8   ((uint32_t) I2C3_SCL_AF)
+#define AF_I2C3_SDA_PB4   ((uint32_t) I2C3_SDA_AF)
 
 static void gpio_bus_init(void)
 {

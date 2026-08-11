@@ -132,6 +132,16 @@ run = [
     ".venv/bin/python tests/test_toolchain.py",
 ]
 
+[tasks.blink]
+description = "Tier 1: code built for the selected part runs on it"
+# Split out of `toolchain` by issue #20. Flashing is powering, and Tier 0 is
+# defined as nothing powered, so this is the first gate in the specification
+# that puts a part under power. Needs arm-none-eabi-gcc, st-flash and a board.
+run = [
+    "bash scripts/blink.sh",
+    ".venv/bin/python tests/test_blink.py",
+]
+
 # --- Tier 1: capture engine alone, on breakouts ---
 [tasks.rate]
 description = "7,143 conversion-ready edges per second, within one percent, ten minutes"

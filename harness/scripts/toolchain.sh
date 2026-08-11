@@ -3,76 +3,45 @@
 # toolchain.sh - the command behind `mise run toolchain`.
 #
 # Gate: "the capture engine part satisfies the timing budget",
-# todos/stage0_todo.md, Tier 0. Passes when a blink builds and flashes on
-# the selected part, and the two I2C peripherals are recorded from the
-# datasheet rather than from a product page.
+# todos/stage0_todo.md, Tier 0. Passes when the clock plan holds against
+# every limit transcribed from the part's datasheet, and the two I2C
+# peripherals are recorded from the datasheet on separate pins with their
+# alternate function numbers.
 #
-# Writes harness/results/stage0_toolchain.json from the real outcome of
-# each step. Every exit path writes a result, including the ones this
-# script did not anticipate: the ERR trap below is what makes that true,
-# and it replaces an earlier arrangement in which a failure during cmake
-# configure exited under `set -e` and left no file at all, while the
-# header claimed results came from "the real exit codes of each step".
+# Nothing is powered here and nothing is flashed. The check is a compile:
+# scripts/toolchain_record.c includes firmware/capture/timing_budget.h,
+# whose static assertions compare the clock plan against limits
+# transcribed from DocID026289 Rev 4. A plan that violates a limit does
+# not build. Whether the cross toolchain can produce an image the part
+# executes is the Tier 1 `blink` gate, and was half of this gate's
+# criterion until issue #20 split them.
 #
-# What this script will not do:
+# The record is printed by that program from the same headers the firmware
+# compiles against, so it cannot claim an alternate function the firmware
+# does not program. No value in the result file is typed by hand.
 #
-#   - It does not decide whether a prediction held. The prediction lives
-#     in the gate's issue, recorded before the run, and whether it held is
-#     a judgement made by a person reading this file afterwards. An
-#     earlier revision wrote "prediction_held": true as a constant on the
-#     pass path, which is the one field in the record that cannot be
-#     recovered if it is wrong.
-#   - It does not infer that the blink was seen. Flashing successfully and
-#     a visible LED are different claims; the second is confirmed by the
-#     operator at the prompt below. Prompting belongs in scripts/ and is
-#     the reason scripts/ and tests/ are separate directories.
-#
-# Requires: arm-none-eabi-gcc, cmake, ninja, st-flash, and an ST-Link
-# attached to an STM32F411CEU6 board.
+# This script does not decide whether a prediction held. That is recorded
+# in the gate's issue before the run and judged by a person afterwards.
 
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 HARNESS_DIR="${REPO_ROOT}/harness"
 FW_DIR="${HARNESS_DIR}/firmware/capture"
-BUILD_DIR="${FW_DIR}/build"
+SCRIPTS_DIR="${HARNESS_DIR}/scripts"
 RESULTS_DIR="${HARNESS_DIR}/results"
 RESULTS_FILE="${RESULTS_DIR}/stage0_toolchain.json"
 
-PART="STM32F411CEU6"
-PART_DATASHEET="DocID026289 Rev 4"
-
 stage="preflight"
 doctor_status="not run"
-blink_observed="not reached"
+work_dir=""
 
-mkdir -p "${RESULTS_DIR}"
+cleanup() {
+    [ -n "${work_dir}" ] && rm -rf "${work_dir}"
+}
+trap cleanup EXIT
 
-# --- result record -------------------------------------------------------
-
-# The two I2C peripherals, as required by the gate's criterion and by
-# results/README.md. Recorded from Table 9 of the datasheet named above,
-# not from a product page or a selector table. The alternate function
-# numbers differ between the two buses and that is not a typo: Table 9
-# heads AF04 "I2C1/I2C2/I2C3" and AF09 "I2C2/I2C3", so which column
-# applies is a per-pin fact.
-read -r -d '' I2C_RECORD <<'JSON' || true
-    {
-      "instance": "I2C1",
-      "scl": { "pin": "PB6", "af": 4, "package_pin": 42 },
-      "sda": { "pin": "PB7", "af": 4, "package_pin": 43 }
-    },
-    {
-      "instance": "I2C3",
-      "scl": { "pin": "PA8", "af": 4, "package_pin": 29 },
-      "sda": { "pin": "PB4", "af": 9, "package_pin": 40 }
-    }
-JSON
-
-write_result() {
-    local status="$1"
-    local failed_stage="$2"
-
+write_failure() {
     local git_commit git_dirty
     git_commit="$(git -C "${REPO_ROOT}" rev-parse HEAD)"
     if [ -n "$(git -C "${REPO_ROOT}" status --porcelain)" ]; then
@@ -80,7 +49,7 @@ write_result() {
     else
         git_dirty="false"
     fi
-
+    mkdir -p "${RESULTS_DIR}"
     cat > "${RESULTS_FILE}" <<EOF
 {
   "gate": "toolchain",
@@ -91,48 +60,32 @@ write_result() {
   "git_commit": "${git_commit}",
   "git_dirty": ${git_dirty},
   "doctor": "${doctor_status}",
-  "status": "${status}",
-  "failed_stage": "${failed_stage}",
-  "part": "${PART}",
-  "part_datasheet": "${PART_DATASHEET}",
-  "package": "UFQFPN48",
-  "i2c_peripherals": [
-${I2C_RECORD}
-  ],
-  "blink_observed": "${blink_observed}",
-  "toolchain": {
-    "arm_none_eabi_gcc": "${gcc_version:-unavailable}",
-    "cmake": "${cmake_version:-unavailable}",
-    "st_flash": "${stflash_version:-unavailable}"
-  }
+  "status": "fail",
+  "failed_stage": "${stage}"
 }
 EOF
 }
 
 on_error() {
-    write_result "fail" "${stage}"
+    write_failure
     echo "toolchain: failed during ${stage}; result written to ${RESULTS_FILE}" >&2
 }
-trap on_error ERR
+trap 'on_error; cleanup' ERR
+
+mkdir -p "${RESULTS_DIR}"
 
 # --- preflight -----------------------------------------------------------
 
 stage="preflight"
 
-for tool in arm-none-eabi-gcc cmake ninja st-flash; do
-    if ! command -v "${tool}" >/dev/null 2>&1; then
-        echo "toolchain: ${tool} not found on PATH" >&2
-        false
-    fi
-done
-
-gcc_version="$(arm-none-eabi-gcc -dumpversion)"
-cmake_version="$(cmake --version | head -1 | awk '{print $3}')"
-stflash_version="$(st-flash --version 2>&1 | head -1)"
+CC="${CC:-cc}"
+if ! command -v "${CC}" >/dev/null 2>&1; then
+    echo "toolchain: no host C compiler (${CC}) on PATH" >&2
+    false
+fi
 
 # The interpreter and environment a measurement ran under are part of the
-# measurement. doctor is named in the record rather than assumed, because
-# the diff cannot show which environment was live.
+# measurement, so doctor is named in the record rather than assumed.
 stage="doctor"
 if (cd "${HARNESS_DIR}" && mise run doctor >/dev/null 2>&1); then
     doctor_status="clean"
@@ -142,39 +95,67 @@ else
     false
 fi
 
-# --- build ---------------------------------------------------------------
+# --- the check: the datasheet assertions must compile --------------------
 
-stage="configure"
-cmake -S "${FW_DIR}" -B "${BUILD_DIR}" -GNinja
+stage="assertions"
+work_dir="$(mktemp -d)"
+"${CC}" -std=c11 -Wall -Wextra -Werror \
+    -I "${FW_DIR}" \
+    "${SCRIPTS_DIR}/toolchain_record.c" \
+    -o "${work_dir}/toolchain_record"
 
-stage="build"
-cmake --build "${BUILD_DIR}"
+stage="record"
+"${work_dir}/toolchain_record" > "${work_dir}/record.json"
 
-# --- flash ---------------------------------------------------------------
+# --- assemble ------------------------------------------------------------
 
-stage="flash"
-st-flash write "${BUILD_DIR}/capture_engine.bin" 0x08000000
+stage="assemble"
+CC_VERSION="$("${CC}" --version | head -1)"
+GIT_COMMIT="$(git -C "${REPO_ROOT}" rev-parse HEAD)"
+if [ -n "$(git -C "${REPO_ROOT}" status --porcelain)" ]; then
+    GIT_DIRTY="true"
+else
+    GIT_DIRTY="false"
+fi
 
-# --- observation ---------------------------------------------------------
-#
-# The criterion is that a blink flashes, which no exit code can establish.
+RECORD_JSON="${work_dir}/record.json" \
+RESULTS_FILE="${RESULTS_FILE}" \
+DOCTOR_STATUS="${doctor_status}" \
+GIT_COMMIT="${GIT_COMMIT}" \
+GIT_DIRTY="${GIT_DIRTY}" \
+CC_VERSION="${CC_VERSION}" \
+"${HARNESS_DIR}/.venv/bin/python" - <<'PY'
+import datetime
+import json
+import os
 
-stage="observe"
-printf 'toolchain: is the LED blinking at about 1 Hz? [y/N] ' >&2
-read -r answer
-case "${answer}" in
-    [yY]|[yY][eE][sS])
-        blink_observed="yes"
-        ;;
-    *)
-        blink_observed="no"
-        echo "toolchain: blink not observed; the gate does not pass" >&2
-        false
-        ;;
-esac
+with open(os.environ["RECORD_JSON"]) as handle:
+    record = json.load(handle)
 
-# --- pass ----------------------------------------------------------------
+result = {
+    "gate": "toolchain",
+    "stage": 0,
+    "tier": 0,
+    "specification": "todos/stage0_todo.md",
+    "timestamp_utc": datetime.datetime.now(datetime.timezone.utc)
+                     .strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "git_commit": os.environ["GIT_COMMIT"],
+    "git_dirty": os.environ["GIT_DIRTY"] == "true",
+    "doctor": os.environ["DOCTOR_STATUS"],
+    "status": "pass",
+    "failed_stage": "none",
+    "checked_by": {
+        "method": "compile-time static assertions, host compiler",
+        "compiler": os.environ["CC_VERSION"],
+        "source": "harness/scripts/toolchain_record.c",
+    },
+}
+result.update(record)
 
-trap - ERR
-write_result "pass" "none"
-echo "toolchain: build, flash and blink confirmed; result written to ${RESULTS_FILE}"
+with open(os.environ["RESULTS_FILE"], "w") as handle:
+    json.dump(result, handle, indent=2)
+    handle.write("\n")
+PY
+
+trap cleanup EXIT
+echo "toolchain: datasheet assertions hold; result written to ${RESULTS_FILE}"

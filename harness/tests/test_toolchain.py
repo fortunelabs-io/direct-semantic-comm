@@ -2,14 +2,17 @@
 
 Pure: reads ../results/stage0_toolchain.json, computes, exits. Silent on
 success with exit 0, one line per failure and exit 1 otherwise. It never
-prompts and never touches hardware -- the capture side of this gate lives
-in ../scripts/toolchain.sh, and that split is why the two directories
-exist.
+prompts and never touches hardware; the capture side lives in
+../scripts/toolchain.sh, and that split is why the two directories exist.
 
 The criterion is stated in todos/stage0_todo.md and is not restated here
-beyond what the checks below encode: a blink builds and flashes on the
-selected part, and the two I2C peripherals are recorded from the datasheet
-rather than from a product page.
+beyond what the checks below encode: the clock plan holds against every
+limit transcribed from the part's datasheet, and the two I2C peripherals
+are recorded from the datasheet on separate pins with their alternate
+function numbers.
+
+Nothing here concerns building or flashing. That is the Tier 1 `blink`
+gate, split out by issue #20 because Tier 0 is defined as nothing powered.
 """
 
 import json
@@ -58,18 +61,67 @@ if result.get("git_dirty") is not False:
 if not result.get("git_commit"):
     fail("no git commit recorded")
 
-# --- the criterion --------------------------------------------------------
-
-if result.get("blink_observed") != "yes":
-    fail(f"blink_observed is {result.get('blink_observed')!r}; the "
-         f"criterion requires a blink that flashes, not one that links")
+# --- the part -------------------------------------------------------------
 
 if result.get("part") != EXPECTED_PART:
     fail(f"part is {result.get('part')!r}, expected {EXPECTED_PART!r}")
 
 if not result.get("part_datasheet"):
-    fail("no datasheet named; the criterion requires the I2C peripherals "
-         "be recorded from the datasheet rather than a product page")
+    fail("no datasheet named; the criterion requires the peripherals be "
+         "recorded from the datasheet rather than a product page")
+
+# --- the clock plan against the transcribed limits ------------------------
+#
+# The capture already failed to compile if any of these were violated. They
+# are re-checked here against the published numbers so that the result file
+# can be read on its own, by someone who did not watch the build.
+
+plan = result.get("clock_plan_hz", {})
+limits = result.get("datasheet_limits_hz", {})
+
+if not plan:
+    fail("no clock plan recorded")
+if not limits:
+    fail("no datasheet limits recorded")
+
+if plan and limits:
+    checks = [
+        ("pll_in", "pll_in_min", "pll_in_max"),
+        ("vco_out", "vco_out_min", "vco_out_max"),
+    ]
+    for value_key, min_key, max_key in checks:
+        value = plan.get(value_key)
+        low, high = limits.get(min_key), limits.get(max_key)
+        if None in (value, low, high):
+            fail(f"{value_key} cannot be checked against its limits")
+        elif not low <= value <= high:
+            fail(f"{value_key} is {value}, outside the datasheet range "
+                 f"{low}..{high}")
+
+    for value_key, max_key in (("hclk", "hclk_max"), ("pclk1", "pclk1_max")):
+        value, high = plan.get(value_key), limits.get(max_key)
+        if None in (value, high):
+            fail(f"{value_key} cannot be checked against its limit")
+        elif value > high:
+            fail(f"{value_key} is {value}, above the datasheet maximum {high}")
+
+    # The claim in the specification names USB device as one of the four
+    # required peripherals, and the Tier 1 stream gate is stated against
+    # USB CDC. An out-of-specification USB clock forfeits both.
+    usb, usb_required = plan.get("usb"), limits.get("usb_required")
+    if None in (usb, usb_required):
+        fail("USB clock cannot be checked")
+    elif usb != usb_required:
+        fail(f"USB clock is {usb}, not the required {usb_required}")
+
+# The timebase must not itself consume the Tier 1 jitter budget.
+tick = result.get("timer_tick_us")
+budget = result.get("jitter_budget_us")
+if None in (tick, budget):
+    fail("timer tick or jitter budget not recorded")
+elif tick * 2 > budget:
+    fail(f"a {tick} us tick gives under 2x margin against a {budget} us "
+         f"jitter budget")
 
 # --- the two I2C masters --------------------------------------------------
 
@@ -82,9 +134,9 @@ else:
     if len(set(instances)) != 2:
         fail(f"the two I2C records name the same instance: {instances}")
 
-    # "Two I2C masters on separate pins" is the binding constraint from
-    # the part ADR. Parts listing two instances often mux them onto
-    # overlapping pin groups, so the pins are checked, not the count.
+    # "Two I2C masters on separate pins" is the binding constraint from the
+    # part ADR. Parts listing two instances often mux them onto overlapping
+    # pin groups, so the pins are checked, not the count.
     pins: list[str] = []
     for bus in i2c:
         for line in ("scl", "sda"):
@@ -95,6 +147,10 @@ else:
             if entry.get("af") is None:
                 fail(f"{bus.get('instance')} {line} has no alternate "
                      f"function recorded")
+            if entry.get("package_pin") is None:
+                fail(f"{bus.get('instance')} {line} has no package pin "
+                     f"recorded; a function on an unbonded pad is not "
+                     f"available")
             pins.append(entry["pin"])
 
     if len(pins) != len(set(pins)):

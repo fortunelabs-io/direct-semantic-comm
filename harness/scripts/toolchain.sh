@@ -122,7 +122,7 @@ stage="record"
 stage="assemble"
 CC_VERSION="$("${CC}" --version | head -1)"
 GIT_COMMIT="$(git -C "${REPO_ROOT}" rev-parse HEAD)"
-if [ -n "$(git -C "${REPO_ROOT}" status --porcelain)" ]; then
+if [ -n "$(tree_dirty)" ]; then
     GIT_DIRTY="true"
 else
     GIT_DIRTY="false"

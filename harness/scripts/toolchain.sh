@@ -41,10 +41,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Dirty apart from the result file this run is producing. That file is
+# necessarily untracked or modified at capture time, because it is the
+# output; counting it would make the gate pass on a clean tree exactly
+# once and fail on every run afterwards, which is a reproducibility bug
+# dressed as an integrity check.
+tree_dirty() {
+    git -C "${REPO_ROOT}" status --porcelain \
+        -- ":(exclude)harness/results/$(basename "${RESULTS_FILE}")"
+}
+
 write_failure() {
     local git_commit git_dirty
     git_commit="$(git -C "${REPO_ROOT}" rev-parse HEAD)"
-    if [ -n "$(git -C "${REPO_ROOT}" status --porcelain)" ]; then
+    if [ -n "$(tree_dirty)" ]; then
         git_dirty="true"
     else
         git_dirty="false"

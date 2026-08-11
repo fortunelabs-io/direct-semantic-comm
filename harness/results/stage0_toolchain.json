@@ -1,0 +1,75 @@
+{
+  "gate": "toolchain",
+  "stage": 0,
+  "tier": 0,
+  "specification": "todos/stage0_todo.md",
+  "timestamp_utc": "2026-08-11T19:44:31Z",
+  "git_commit": "9e7b104b6d6cfc2f23cd33992f22866228391f1b",
+  "git_dirty": false,
+  "doctor": "clean",
+  "status": "pass",
+  "failed_stage": "none",
+  "checked_by": {
+    "method": "compile-time static assertions, host compiler",
+    "compiler": "cc (GCC) 15.3.1 20260722 (Red Hat 15.3.1-1)",
+    "source": "harness/scripts/toolchain_record.c"
+  },
+  "part": "STM32F411CEU6",
+  "package": "UFQFPN48",
+  "part_datasheet": "DocID026289 Rev 4",
+  "clock_plan_hz": {
+    "pll_in": 1000000,
+    "vco_out": 192000000,
+    "sysclk": 96000000,
+    "hclk": 96000000,
+    "pclk1": 48000000,
+    "usb": 48000000,
+    "tim2_kernel": 96000000,
+    "tim2_tick": 1000000
+  },
+  "datasheet_limits_hz": {
+    "pll_in_min": 950000,
+    "pll_in_max": 2100000,
+    "vco_out_min": 100000000,
+    "vco_out_max": 432000000,
+    "hclk_max": 100000000,
+    "pclk1_max": 50000000,
+    "usb_required": 48000000
+  },
+  "timer_tick_us": 1,
+  "jitter_budget_us": 2,
+  "i2c_registers": {
+    "tim2_psc": 95,
+    "i2c_ccr": 240,
+    "i2c_trise": 49,
+    "i2c_cr2_freq_mhz": 48
+  },
+  "i2c_peripherals": [
+    {
+      "instance": "I2C1",
+      "scl": {
+        "pin": "PB6",
+        "af": 4,
+        "package_pin": 42
+      },
+      "sda": {
+        "pin": "PB7",
+        "af": 4,
+        "package_pin": 43
+      }
+    },
+    {
+      "instance": "I2C3",
+      "scl": {
+        "pin": "PA8",
+        "af": 4,
+        "package_pin": 29
+      },
+      "sda": {
+        "pin": "PB4",
+        "af": 9,
+        "package_pin": 40
+      }
+    }
+  ]
+}

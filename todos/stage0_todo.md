@@ -115,7 +115,7 @@ depends on who ran it.
 | Task isolation and tool pinning | mise. The ESP-IDF version pinned here is the one the Stage -1 contract declares, which is what turns that declaration into something enforced |
 | Editor | VSCode |
 | DUT firmware | ESP-IDF v5.x, Espressif IDF extension or PlatformIO. ESP32-S3 has native USB-serial-JTAG, no external programmer |
-| Capture firmware | Depends on gate A1. RP2040: pico-sdk, CMake. STM32: STM32CubeMX plus CMake |
+| Capture firmware | STM32F411CEU6, bare metal: arm-none-eabi-gcc, CMake, Ninja, st-flash. No CubeMX and no vendor HAL, per `docs/adr/2026-08-12-capture-engine-firmware-is-bare-metal.md` |
 | Host | Python 3, pyserial, numpy, pandas, matplotlib, scipy |
 | PCB | KiCad, JLCPCB for fabrication and optional assembly, LCSC for parts |
 | Bench | DMM with DCV accuracy 0.1 percent or better; 0.1 percent metal film resistors; regulated linear bench supply; low-cost USB logic analyser with PulseView or sigrok |

@@ -1,11 +1,11 @@
 # Direct Semantic Communication: High-Level Design, v1
 
 **Status: Draft.**
-
-*The architecture of the two-node semantic transfer experiment and the
+The architecture of the two-node semantic transfer experiment and the
 instrument that meters it. Derived from the ADRs in `adr/`, from
 DocID026289 Rev 4 (STM32F411xC/xE) and SBOS547B (INA226), and from the firmware
-skeleton in `harness/firmware/capture/`. 
+skeleton in `harness/firmware/capture/`.
+
 ---
 
 ## Preface: what this document is, and what it is not

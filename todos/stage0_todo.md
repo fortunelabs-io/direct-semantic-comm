@@ -163,18 +163,55 @@ bench sensor source are decided before firmware exists.
 
 **Command.** none, this is a bench action
 
-**Produces.** Three lines in this repository's README, and the four-state Gray
-sequence written out for both roles.
+**Produces.** Three lines in `harness/README.md`, one architecture decision
+record for each of the first two choices, and the Gray sequence written out for
+both roles in `docs/hardware-harness-v1/phase_code_map.md`.
 
-**Recommendation on record.** Free-running for v1, because a gate that fires
-wrongly loses data silently and a full stream can always be trimmed on the host.
-Parallel phase code, because serial adds a latency that would itself need
-characterising.
+**Decision on record, first.** Capture is free-running, per
+`docs/adr/2026-08-17-capture-is-free-running.md`. A gate that fires wrongly loses
+data silently, and a full stream can always be trimmed on the host while a
+trimmed stream cannot be untrimmed.
+
+**Decision on record, second.** The phase code is three parallel bits per node,
+per `docs/adr/2026-08-17-phase-code-is-parallel-three-bit.md`. Serialising adds a
+latency that would itself need characterising and subtracting from every phase
+boundary, which is the one quantity this harness exists to produce.
+
+**Decision on record, third.** The bench sensor is the bare INA226AIDGSR in
+VSSOP-10, LCSC C49851, and no breakout is used at any tier. The shunt is
+therefore a part this project fits rather than a part it inherits, and it is the
+0.1 ohm already fixed by the timing budget and declared in the Stage -1 contract.
+
+This is the confirmation the choice asked for, arrived at by removing the
+question rather than by answering it. The trap it was written against is real:
+many INA226 breakouts carry a 0.002 ohm shunt for high-current use, which puts
+the 330 mA transmit peak at 660 microvolts of an 81.92 millivolt span, and puts
+one least significant bit at 1.25 mA. Against the 97 mA receive level that is
+1.3 percent per count from quantisation alone, so such a breakout could not meet
+the 0.5 percent criterion of the `gain` gate below no matter how it was
+calibrated. A bare part has no shunt to confirm, so no product listing is relied
+on for anything.
+
+**Consequence of the third decision, priced here rather than discovered later.**
+VSSOP-10 is 0.5 mm pitch and cannot be breadboarded. Tier 1 and Tier 2 therefore
+need a hand-assembled sensor board rather than a purchased module, and that board
+carries the same Kelvin sense requirement as the fabricated harness, because at
+0.1 ohm one milliohm in the sense path is a one percent error whether the board
+was fabricated or hand-wired.
 
 **Why the Gray sequence is written before firmware.** The capture engine samples
 the phase bus asynchronously. If two bits change on one transition, a sample
 landing inside it latches a code that was never intended. One bit per transition
 makes a mid-transition sample read the old code or the new one and never a third.
+
+**What writing it before firmware caught.** Two things, both of which would
+otherwise have been found in Tier 2 against working firmware. The sequence is six
+states per role and not four, because sleep entry is a marked phase in its own
+right and because both roles carry an acknowledgement, and because five states
+cannot close at Hamming distance 1 on any number of bits. And at six states every
+bit pattern on the bus is meaningful, so the `phase` gate's criterion had to move
+from counting invalid codes to counting invalid transitions. Both are recorded in
+`phase_code_map.md`, and the second one edits a gate below.
 
 ---
 
@@ -309,22 +346,34 @@ produces timestamps that look plausible and are wrong.
 
 ## Tier 2: device under test, still on breakouts
 
-### The phase bus decodes with no invalid codes
+### The phase bus decodes with no invalid transitions
 
-**Claim.** The capture engine decodes a complete four-state Gray sequence for both
+**Claim.** The capture engine decodes a complete six-state Gray cycle for both
 roles.
 
 **Command.** `mise run phase`
 
-**Produces.** `results/stage0_phase.json` with transition count, invalid code
-count, dwell time per state.
+**Produces.** `results/stage0_phase.json` with transition count, invalid
+transition count, dwell time per state.
 
-**Passes when.** Ten thousand transitions decoded, zero invalid codes.
+**Passes when.** Ten thousand transitions decoded, zero invalid transitions. The
+legal set is the six edges of the cycle in
+`docs/hardware-harness-v1/phase_code_map.md`, plus armed to wake, plus any code
+to error. Everything else is invalid.
 
 **Prediction on record.** With Gray coding, a sample landing mid-transition reads
-the old code or the new one. Any invalid code at all means either the sequence is
-not Gray-ordered or the marker is writing bits in more than one operation, and
-both are visible in the transition that produced it.
+the old code or the new one. Every legal edge changes exactly one bit, so any
+transition of two or three bits at once means either the sequence is not
+Gray-ordered or the marker is writing bits in more than one operation, and both
+are visible in the transition that produced it.
+
+**Why this counts transitions and not codes.** It counted codes while the
+sequence was four states, when four of the eight bit patterns were unused and a
+bad read usually landed on one of them. The closed sequence uses six codes and
+names the other two, so no bit pattern on the bus is meaningless and a criterion
+counting invalid codes would report zero whatever the bus did. The change was
+made by the `spec` commit that closed `choices`, before this gate was written or
+run.
 
 **Note on the marker.** One masked register write, nothing else in the function.
 The ESP-NOW send callback runs from a high-priority Wi-Fi task where the vendor

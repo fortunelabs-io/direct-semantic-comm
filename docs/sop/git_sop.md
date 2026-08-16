@@ -64,8 +64,9 @@ one piece of work. A fast-forward erases it, and a merge commit costs nothing.
 **Delete the branch after merging**, locally and on `origin`. A merged branch
 left standing is indistinguishable at a glance from work in progress.
 
-> Housekeeping outstanding: `chore/directory-mapping` and `chore/figuring-out`
-> are both fully merged into `main` and can be deleted on both sides.
+`git fetch --prune` after a merge, so a branch deleted on `origin` stops
+appearing in `git branch -a` as though it were still live. The remote-tracking
+ref outlives the branch otherwise, which defeats the rule above.
 
 ---
 

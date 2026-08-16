@@ -1,7 +1,21 @@
 # The capture engine is an STM32, and the part number stays open
 
 **Date:** 2026-08-09
-**Status:** Accepted
+**Status:** Superseded in part. The family decision (STM32) stands and is still
+the record for it. Both clauses that made this entry's title true are gone:
+
+- **The part number is closed.** STM32F411CEU6, by
+  [`2026-08-12-capture-engine-part-is-stm32f411ceu6.md`](./2026-08-12-capture-engine-part-is-stm32f411ceu6.md),
+  which declares `Supersedes:` against this entry. Tier 0 gate 1 has since
+  closed.
+- **The toolchain clause is revised.** No CubeMX and no vendor HAL anywhere in
+  the capture firmware, by
+  [`2026-08-12-capture-engine-firmware-is-bare-metal.md`](./2026-08-12-capture-engine-firmware-is-bare-metal.md),
+  which declares `Amends:` against it.
+
+Read below for the family argument and for what it deliberately did not claim.
+Everything it says about the part number staying open, about CubeMX, and about
+generated initialisation being committed, is no longer true of this project.
 
 ## Context
 

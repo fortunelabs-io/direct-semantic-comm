@@ -269,27 +269,41 @@ for the rest of the run. Three bits are self-describing, cost the same single
 register write, and stay inside the ESP-NOW send-callback discipline where the
 vendor documentation forbids lengthy operations.
 
-**A recommendation on the two questions `phase_code_map.md` leaves open**, offered
-here because both are answered by the same construction:
+**Both questions this section previously left open are now closed** by issue #2,
+in `phase_code_map.md` and in
+`adr/2026-08-17-phase-code-is-parallel-three-bit.md`. The recommendation offered
+here was adopted and then extended, and the extension is worth recording because
+it came from a parity argument rather than from a preference.
 
-R's map currently has no code for its application-layer acknowledgement transmit,
-and the file notes this matters because R's transmit peak is the same 330 mA as
-S's. Extending the cycle to six states preserves the Hamming-1 property
-everywhere including the wrap:
+The cycle is six states, and **both roles use it**, slot for slot:
 
 ```
-000 sleep -> 001 wake -> 011 receive -> 010 decode/process -> 110 ack-tx -> 100 -> 000
-     b0         b1           b0              b2                   b1        b2
+000 sleep -> 001 wake -> 011 encode/receive -> 010 transmit/decode -> 110 ack -> 100 sleep-entry -> 000
+      b0         b1              b0                    b2               b1              b2
 ```
 
-This costs the reserved/armed code at `110`, which moves to `101`. It resolves
-"does the ACK get its own code" as *yes, and for free*, and it removes the
-alternative of charging R's transmit inside the decode phase, which would
-contaminate a compute term with a radio term — precisely the confound the
-three-term cost model exists to prevent.
+Three things drove it past four states. `adr/2026-08-09-wake-cost-separate-from-frame-cost.md`
+already requires sleep entry to be marked in its own right rather than folded
+into idle. The sufficiency constraint requires R to acknowledge, so R transmits,
+and it follows that S receives that acknowledgement, so the acknowledgement slot
+is symmetric rather than R's alone. And five phases **cannot** close at Hamming
+distance 1 on any number of bits, since a closed cycle changes every bit an even
+number of times and therefore has even length. The sixth state is not padding:
+parity is what turned "R needs an ack code" into "both roles need six".
 
-It does not resolve what `b2` means for S, which is the other open cell. That one
-is a genuine choice and is left where it belongs.
+`b2` is resolved as an ordinary phase bit rather than an out-of-cycle flag, which
+is what it was under the four-state sequence. The armed and error codes are
+therefore named directly, `101` and `111`, since no spare bit identifies them any
+more. `b2` must be driven and never floating: floating, it no longer fabricates a
+reserved code but a plausible *phase*, with a plausible dwell time, which the
+decoder cannot detect.
+
+**One consequence lands on a gate.** Six of eight codes are in the cycle and the
+other two are named, so no bit pattern on the bus is meaningless and the `phase`
+gate can no longer count invalid codes. It counts invalid transitions instead,
+against the six legal one-bit edges plus armed-to-wake plus any-code-to-error.
+The criterion in `todos/stage0_todo.md` was edited by the `spec` commit that
+closed the choice, before the gate was written or run.
 
 ### 4.3 Capture engine → host (wire protocol) — **OPEN, and the largest hole**
 
@@ -543,18 +557,40 @@ the `wrap` gate as priced, and the USB CDC transport is unwritten, unpriced, and
 constrained by the bare-metal ADR to be hand-written. Blocks `stream`, and
 `stream` blocks every Tier 1 gate that reads a capture.
 
-**O3 — `harness_spec.md` does not exist.** `phase_code_map.md` cites its §4 for
-pin allocation and for choice A3, and cannot close without it. Section 6.3 above
-states the constraints that section must satisfy; it does not make the
-allocation, which is a decision.
+**O3. `harness_spec.md` does not exist.** Still open, but it no longer blocks
+`phase_code_map.md`. That file's exit criterion cited §4 for pin allocation and
+could not close without a document nobody had written; issue #2 split the
+dependency, on the grounds that a code table is not made correct by a pin map and
+that holding a finished table open behind an unwritten one reports a closed
+decision as open. What remains here is the pin allocation itself. Section 6.3
+above states the constraints; it does not make the allocation, which is a
+decision. One constraint is now tighter than when 6.3 was written: under the
+closed six-state cycle **all three phase bits toggle once per event in each
+direction**, so `b2` is a timing-relevant edge source rather than a static level,
+and a pin map drawn against the old four-state assumption would have
+under-specified it.
 
-**O4 — The three Phase A implementation choices.** Free-running versus gated
-capture, parallel versus serial phase code, bench sensor source. All three are
-open in `harness/README.md` with recommendations on record. The third has a trap
-attached that is worth restating: many INA226 breakouts ship a 0.002 Ω shunt for
-high-current use, which would put the 330 mA transmit peak at 165 µV of an
-81.92 mV span. **The breakout's shunt value is confirmed from its own schematic,
-never from a product listing.**
+**O4. The three Phase A implementation choices. Closed** by issue #2, 2026-08-17.
+Capture is free-running (`adr/2026-08-17-capture-is-free-running.md`), the phase
+code is three parallel bits per node
+(`adr/2026-08-17-phase-code-is-parallel-three-bit.md`), and the bench sensor is
+the bare INA226AIDGSR in VSSOP-10, LCSC C49851, with no breakout at any tier.
+
+The trap attached to the third is retained here, corrected, because it prices a
+requirement rather than merely warning about a part. **The figure previously given
+in this section, 165 µV, was wrong by a factor of four:** 0.002 Ω against 330 mA
+is 660 µV, not 165 µV, of an 81.92 mV span. The stronger form of the argument is
+not in microvolts anyway. At 0.002 Ω one LSB is 2.5 µV / 0.002 Ω = **1.25 mA**,
+so the 97 mA receive level is 78 counts and quantisation alone contributes 1.3 %
+per count, against the `gain` gate's 0.5 % criterion. Such a breakout fails that
+gate arithmetically, whatever calibration is applied to it. Buying the bare part
+removes the question rather than answering it: there is no inherited shunt, so no
+product listing is relied on, and the 0.1 Ω the timing budget fixed is a part this
+project fits.
+
+The consequence is priced in `todos/stage0_todo.md`: VSSOP-10 is 0.5 mm pitch and
+cannot be breadboarded, so Tier 1 and Tier 2 need a hand-assembled sensor carrier
+holding the same Kelvin sense requirement as the fabricated board.
 
 **O5 — Periodic bus-voltage conversion is not free.** The design monitors the
 supply assumption with roughly one bus conversion in a hundred, costed as one
@@ -655,9 +691,9 @@ board.
 | `docs/dsc_hld.md` | This document | Draft |
 | `contracts/stage_minus1_contract.md` | Five questions, answered from declared constants | Closed |
 | `todos/stage0_todo.md` | Gates: claim, command, criterion, prediction | Complete |
-| `docs/adr/` | Eleven entries; one marked superseded, one superseded but unmarked (O7) | Live |
+| `docs/adr/` | Thirteen entries; one marked superseded, one superseded but unmarked (O7) | Live |
 | `docs/hardware-harness-v1/harness_timing_budget.md` | The arithmetic the harness is sized by | Complete |
-| `docs/hardware-harness-v1/phase_code_map.md` | Code-to-phase table, both roles | **OPEN**, gated on A3 |
+| `docs/hardware-harness-v1/phase_code_map.md` | Code-to-phase table, both roles, six states each | **Closed**, proved by `phase` in Tier 2 |
 | `docs/hardware-harness-v1/harness_spec.md` | Pin allocation, §4 | **Does not exist** (O3) |
 | `harness/firmware/capture/` | Bare-metal capture engine | Tier 0 subset built |
 | `harness/firmware/dut/` | One image per role and per ablation | Empty, Tier 2 |

@@ -609,23 +609,24 @@ would record a claim about something that has never run. Both close at first
 use, and the ESP-IDF pin is what turns the Stage -1 version declaration into
 something enforced rather than asserted.
 
-**O7 — Two discrepancies in the record itself.** Both are cheap to fix and both
-mislead a reader who lands on one file rather than the set.
+**O7. Two discrepancies in the record itself. Closed**, 2026-08-17. Both misled a
+reader who landed on one file rather than the set, which is the failure mode this
+section exists to catch, so both are recorded here rather than deleted.
 
-`contracts/stage_minus1_contract.md` cites "Stage 0 item C3" for the ESP-NOW
-version check, and the tier ordering in `todos/stage0_todo.md` puts it elsewhere.
-Already named in `docs/sop/issue_sop.md`, unresolved, and it will produce two
-names for one gate.
+`contracts/stage_minus1_contract.md` cited "Stage 0 item C3" for the ESP-NOW
+version check, and the tier ordering in `todos/stage0_todo.md` puts the third
+item of Tier 2 elsewhere. It now names the `link` gate. A gate cited by position
+acquires a second name the moment a gate is inserted above it; cited by handle it
+cannot. `docs/sop/issue_sop.md` had carried this as a discrepancy to reconcile
+and now carries it as the worked example of the rule.
 
-`adr/2026-08-09-capture-engine-is-stm32-part-still-open.md` still carries
-**Status: Accepted**, though the part ADR declares "Supersedes:" against it and
-the bare-metal ADR declares "Amends:" against its toolchain clause. The
-superseded-marking convention *was* followed elsewhere —
-`…ina226-metering-with-stated-blind-spots.md` carries "Superseded by […]" with a
-link — so the omission is an oversight rather than a different convention. A
-reader arriving at that file directly takes away two things that are no longer
-true: that the part number is open, and that the toolchain is "CubeMX plus
-CMake". Its status line should point forward to both successors.
+`adr/2026-08-09-capture-engine-is-stm32-part-still-open.md` carried
+**Status: Accepted** though both clauses making its title true were gone: the
+part ADR declares "Supersedes:" against it and the bare-metal ADR declares
+"Amends:" against its toolchain clause. Its status line now points forward to
+both successors and names which parts of its body no longer hold. The Decision
+section was not touched, per the rule in `git_sop.md` that an edited decision
+destroys the evidence that the project once believed otherwise.
 
 ---
 

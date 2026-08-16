@@ -65,7 +65,7 @@ There is a minimum observation below which the packet-count argument is void, an
 
 The trap being closed: a v1.0 receiver given a v2.0 packet longer than `ESP_NOW_MAX_IE_DATA_LEN` truncates the data to the first `ESP_NOW_MAX_IE_DATA_LEN` bytes or discards the packet. Truncation presents as a decode failure rather than a link failure, and would be attributed to the representation rather than to the transport.
 
-Verified on hardware at Stage 0 item C3, which checks this declaration rather than answering an open question.
+Verified on hardware by the Stage 0 `link` gate, which checks this declaration rather than answering an open question.
 
 ---
 

@@ -45,12 +45,12 @@ S0 negctl — commanding a change moves the trace, and the markers bracket what 
 
 Prefixing with the stage keeps the search box useful once Stage 1 opens.
 
-> **Discrepancy to reconcile before opening these.**
-> `contracts/stage_minus1_contract.md` cites "Stage 0 item C3" for the ESP-NOW
-> version check. Under the tier ordering in `todos/stage0_todo.md`, the third
-> item of Tier 2 is the radio-disabled image, not the version check. Fix the
-> citation to name the handle (`link`) rather than a position, so it cannot
-> drift again when a gate is inserted.
+This is why a gate is cited by handle and never by position.
+`contracts/stage_minus1_contract.md` cited "Stage 0 item C3" for the ESP-NOW
+version check, and under the tier ordering in `todos/stage0_todo.md` the third
+item of Tier 2 is the radio-disabled image, not the version check. The citation
+now names the `link` gate, so it cannot drift again when a gate is inserted
+above it.
 
 ---
 

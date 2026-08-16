@@ -12,11 +12,15 @@ Two-channel metering rig for the Stage 0 through Stage 2 campaigns. One current 
 
 ## The three implementation choices
 
-Tier 0, second gate. Written down before firmware exists. **All three are open.**
+Tier 0, second gate. Written down before firmware exists. **All three are decided.** Recorded here in three lines because that is what the specification names as the artifact; the reasoning is in the records linked from each.
 
-1. **Capture free-running or gated:** *open.* Recommendation on record is free-running for v1, because a gate that fires wrongly loses data silently and a full stream can always be trimmed on the host.
-2. **Phase code parallel or serial:** *open.* Recommendation on record is parallel, because serial adds a latency that would itself need characterising. Codes for both roles: [`phase_code_map.md`](../docs/hardware-harness-v1/phase_code_map.md).
-3. **Bench sensor source:** *open.* If a breakout is used, its shunt value is confirmed **from its own schematic**, not from a product listing. Many INA226 breakouts ship 0.002 ohm for high-current use, which would put the 330 mA transmit peak at 165 microvolts of the 81.92 millivolt span and resolve nothing. PCB v1 does not reuse the breakout.
+1. **Capture is free-running**, not gated by the phase code. A gate that fires wrongly loses data silently, and a full stream can always be trimmed on the host while a trimmed stream cannot be untrimmed. [`adr/2026-08-17-capture-is-free-running.md`](../docs/adr/2026-08-17-capture-is-free-running.md).
+2. **The phase code is three parallel bits per node**, not serialised. Serialising adds a latency that would itself have to be characterised and subtracted from every phase boundary, which is the one quantity this harness exists to produce. [`adr/2026-08-17-phase-code-is-parallel-three-bit.md`](../docs/adr/2026-08-17-phase-code-is-parallel-three-bit.md). Codes for both roles, six states each, closed: [`phase_code_map.md`](../docs/hardware-harness-v1/phase_code_map.md).
+3. **The bench sensor is the bare INA226AIDGSR**, VSSOP-10, LCSC C49851. No breakout at any tier, so there is no inherited shunt and no product listing is relied on. The shunt is a part this project fits: 0.1 ohm, as fixed by the timing budget. The trap this choice was written against is real and is recorded rather than deleted, because it prices the requirement: a 0.002 ohm breakout shunt puts the 330 mA transmit peak at 660 microvolts of an 81.92 millivolt span and one least significant bit at 1.25 mA, which against the 97 mA receive level is 1.3 percent per count from quantisation alone, so it could not meet the `gain` gate's 0.5 percent however it was calibrated.
+
+**Consequence of the third.** VSSOP-10 is 0.5 mm pitch and cannot be breadboarded, so Tier 1 and Tier 2 need a hand-assembled sensor board rather than a purchased module, carrying the same Kelvin sense requirement as the fabricated harness.
+
+**None of the three is proved here.** They are proved by the `phase` gate in Tier 2 and by `gain` and `negctl` in Tier 3, which is how a bench action closes.
 
 ---
 
@@ -25,7 +29,8 @@ Tier 0, second gate. Written down before firmware exists. **All three are open.*
 | Item | Requirement | Value |
 |---|---|---|
 | Capture engine | two independent I2C masters at 400 kHz **on separate pins**, ten GPIO with edge interrupt, microsecond timer, USB device | STM32, *part open, Tier 0 gate 1* |
-| Current sensor | INA226, Alert pin broken out | *open* |
+| Current sensor | INA226, Alert pin broken out | INA226AIDGSR, VSSOP-10, LCSC C49851. Bare part, no module |
+| Sensor carrier, Tier 1 and 2 | 0.5 mm pitch adapter, Kelvin sense to the shunt pads | *open*, hand assembled, 2 off |
 | Shunt | 0.1 ohm, 0.1 percent, high side, Kelvin | fixed by the timing budget |
 | DUT | ESP32-S3 dev board, native USB-serial-JTAG | *open*, 2 off |
 | DMM | DCV 0.1 percent or better, four-wire preferred | *open* |

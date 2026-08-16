@@ -19,7 +19,9 @@ Two metered nodes. Each contributes one conversion-ready line from its current s
 
 **Ten digital inputs.** No analog inputs: the sensors are digital over I2C.
 
-**Why a 3-bit phase code rather than one toggle line.** Node S passes through sleep, wake, encode, transmit, sleep. Node R passes through sleep, wake, receive, decode or process, sleep. Four states each, plus room for an armed state and an error state. A single toggle line encodes transitions but not identity, so one missed edge desynchronises every phase after it for the rest of the run, silently. A 3-bit code is self describing: any sample of the bus states which phase the node is in, and a missed transition costs one boundary rather than a run.
+**Why a 3-bit phase code rather than one toggle line.** Node S passes through sleep, wake, encode, transmit, sleep. Node R passes through sleep, wake, receive, decode or process, sleep. Four states each as counted here, plus room for an armed state and an error state. A single toggle line encodes transitions but not identity, so one missed edge desynchronises every phase after it for the rest of the run, silently. A 3-bit code is self describing: any sample of the bus states which phase the node is in, and a missed transition costs one boundary rather than a run.
+
+**The four-state count above was superseded when the sequence was actually written out.** [`phase_code_map.md`](./phase_code_map.md) closes at **six** states per role: acknowledgement is a phase in both roles rather than R's alone, sleep entry is marked in its own right per the wake-cost ADR, and five states cannot close at Hamming distance 1 because a closed cycle changes every bit an even number of times. The 3-bit conclusion survives intact, and this is the entry worth noting: 3 bits was sized here with four codes spare, and six states plus armed plus error consumes all eight. **The width now has zero headroom.** A seventh phase would need a fourth pin per node, which is a decision rather than an adjustment, and the constraint belongs here where the width was derived.
 
 Three bits also stays inside the callback discipline. Writing three bits is one masked register write on the DUT, which is the same cost as toggling one, and the send callback runs from a high priority Wi-Fi task where nothing longer is permitted.
 
@@ -170,9 +172,11 @@ Thinkbook Stage -1 gains this document as an input to its deliverable table: the
 
 ---
 
-## 10. Open, and closed in Stage 0 Phase A
+## 10. Open, and closed in Stage 0 Tier 0
 
-These are implementation choices, not unanswered questions upstream. They are closed as the first phase of Stage 0, before any bench work begins, and nothing after Phase A starts until they are written down.
+These were implementation choices, not unanswered questions upstream. **Both are now closed**, by the `choices` bench action in Tier 0 of [`stage0_todo.md`](../../todos/stage0_todo.md), issue #2, on 2026-08-17. Neither outcome changes any figure in this document.
 
-- Whether capture is free running or gated by the phase code. Gated is cheaper on volume and slightly more complex in firmware; either satisfies the budget above.
-- Whether the phase code is driven by the DUT or derived on the harness from a single strobe plus a serial phase identifier. The 3 bit parallel code assumed here costs three DUT pins; a serialised alternative costs one pin and adds latency that would have to be characterised. Parallel is assumed until pin pressure on the DUT says otherwise.
+- Whether capture is free running or gated by the phase code. Gated is cheaper on volume and slightly more complex in firmware; either satisfies the budget above. **Closed: free running**, per [`adr/2026-08-17-capture-is-free-running.md`](../adr/2026-08-17-capture-is-free-running.md). The 114 kB/s in §5 is therefore the operating figure and not an upper bound, and the volume note in §5 describes an alternative that was rejected.
+- Whether the phase code is driven by the DUT or derived on the harness from a single strobe plus a serial phase identifier. The 3 bit parallel code assumed here costs three DUT pins; a serialised alternative costs one pin and adds latency that would have to be characterised. Parallel is assumed until pin pressure on the DUT says otherwise. **Closed: parallel**, per [`adr/2026-08-17-phase-code-is-parallel-three-bit.md`](../adr/2026-08-17-phase-code-is-parallel-three-bit.md), on exactly that reasoning. Pin pressure remains the one condition that would reopen it.
+
+The third choice that closed with these two, the bench sensor source, does not appear above because it is a sourcing question rather than an arithmetic one. It is recorded in the specification and in `harness/README.md`. Its one consequence for this document: the sensor is a bare INA226AIDGSR with no inherited shunt, so the 0.1 ohm selected in §6 is fitted rather than confirmed, and §6's table stands unchanged.

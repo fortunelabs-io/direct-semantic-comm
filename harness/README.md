@@ -28,7 +28,7 @@ Tier 0, second gate. Written down before firmware exists. **All three are decide
 
 | Item | Requirement | Value |
 |---|---|---|
-| Capture engine | two independent I2C masters at 400 kHz **on separate pins**, ten GPIO with edge interrupt, microsecond timer, USB device | STM32, *part open, Tier 0 gate 1* |
+| Capture engine | two independent I2C masters at 400 kHz **on separate pins**, ten GPIO with edge interrupt, microsecond timer, USB device | STM32F411CEU6, UFQFPN48, LCSC C60420 |
 | Current sensor | INA226, Alert pin broken out | INA226AIDGSR, VSSOP-10, LCSC C49851. Bare part, no module |
 | Sensor carrier, Tier 1 and 2 | 0.5 mm pitch adapter, Kelvin sense to the shunt pads | *open*, hand assembled, 2 off |
 | Shunt | 0.1 ohm, 0.1 percent, high side, Kelvin | fixed by the timing budget |
@@ -57,7 +57,7 @@ Entering this directory activates `.venv` at the pinned interpreter. Every captu
 
 | Path | What | State |
 |---|---|---|
-| `.mise.toml` | tool pinning and task isolation | Python 3.12.13 pinned; ESP-IDF and capture toolchain open |
+| `.mise.toml` | tool pinning and task isolation | Python 3.12.13 pinned; STM32F411CEU6 pinned; ESP-IDF patch level open; `arm-none-eabi-gcc` open, needed for `blink` |
 | `requirements.txt` | host dependencies, fully pinned including transitives | installed |
 | `.venv/` | the interpreter every gate runs under | created, not tracked |
 | `firmware/capture/` | capture engine: `timebase.c`, `sensor.c`, `stream.c` | planned |

@@ -2,7 +2,7 @@
 
 *Checked at review **before Gerbers are exported**. Fabrication is a bench action with no pass criterion of its own; the Tier 3 gates are what prove it was done correctly. This checklist exists because the two errors below bias every measurement silently rather than failing visibly, and no gate after fabrication can distinguish them from a real result.*
 
-**Status: not started.** KiCad project is planned. Fabrication is deliberately the last thing started, after every question provable at the desk has been answered.
+**Status: not started.** KiCad project is planned. Fabrication is the last thing started, after every question provable at the desk has been answered.
 
 ---
 

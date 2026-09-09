@@ -192,10 +192,11 @@ the decision, not of the writing.
 
 **Status:** `Proposed`, `Accepted`, or `Superseded by <file>`.
 
-**Never edit the Decision section of an Accepted record.** Supersede it with a
+**Never edit an Accepted record.** The status line is the one exception, and only
+to point forward to the file that supersedes it. Supersede it with a
 new file that names what survives from the old one and what changes — as
 [`two-channel-harness-built-in-house`](../adr/2026-08-09-two-channel-harness-built-in-house.md)
-already does. An edited decision destroys the evidence that the project once
+already does. An edited record destroys the evidence that the project once
 believed otherwise, which is the part worth keeping.
 
 **The ADR is written from the argument, not from memory.** The argument is held

@@ -524,7 +524,7 @@ The parent build ended with a threshold it could not adjudicate, because on a ma
 
 ## Decisions
 
-Choices made here that are hard to reverse, or that a future read would otherwise have to re-derive, are recorded as dated entries in `decisions/`:
+Choices made here that are hard to reverse, or that a future read would otherwise have to re-derive, are recorded as dated entries in `adr/`:
 
 | Entry | What it settles |
 |---|---|
@@ -536,3 +536,9 @@ Choices made here that are hard to reverse, or that a future read would otherwis
 | `2026-08-09-terms-identified-by-design-not-by-waveform.md` | Why instrument bandwidth is not on the critical path |
 | `2026-08-09-ina226-metering-with-stated-blind-spots.md` | Superseded. The meter, the shunt, and what is not measured |
 | `2026-08-09-two-channel-harness-built-in-house.md` | The harness, its scope, and what is deferred |
+| `2026-08-09-capture-engine-is-stm32-part-still-open.md` | Superseded in part. STM32 as the capture-engine family (part and toolchain clauses since superseded) |
+| `2026-08-12-capture-engine-part-is-stm32f411ceu6.md` | The capture-engine part number (STM32F411CEU6) |
+| `2026-08-12-capture-engine-firmware-is-bare-metal.md` | Bare-metal register-level capture firmware, no HAL |
+| `2026-08-17-capture-is-free-running.md` | Free-running capture, trimmed on the host |
+| `2026-08-17-phase-code-is-parallel-three-bit.md` | The phase code as three parallel Gray-ordered bits |
+| `2026-09-09-stm32f411-pin-assignment.md` | Proposed. The capture-engine pin map |

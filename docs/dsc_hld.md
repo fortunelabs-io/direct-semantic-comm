@@ -557,14 +557,21 @@ the `wrap` gate as priced, and the USB CDC transport is unwritten, unpriced, and
 constrained by the bare-metal ADR to be hand-written. Blocks `stream`, and
 `stream` blocks every Tier 1 gate that reads a capture.
 
-**O3. `harness_spec.md` does not exist.** Still open, but it no longer blocks
-`phase_code_map.md`. That file's exit criterion cited §4 for pin allocation and
+**O3. `harness_spec.md` now exists; the pin map is proposed, pending its datasheet check.**
+Advanced, not closed, and it never blocked `phase_code_map.md`. The contract has
+been written (`docs/hardware-harness-v1/harness_spec.md`) and its decided parts
+recorded by `adr/2026-09-09-stm32f411-pin-assignment.md`: the two I2C buses (I2C1
+on PB6/PB7, I2C3 on PA8/PB4) and the TIM2 timebase are committed in firmware and
+mirrored there, and the CNVR edge lines are proposed on PB0/PB1 (EXTI0/EXTI1).
+That file's exit criterion once cited §4 for pin allocation and
 could not close without a document nobody had written; issue #2 split the
 dependency, on the grounds that a code table is not made correct by a pin map and
 that holding a finished table open behind an unwritten one reports a closed
-decision as open. What remains here is the pin allocation itself. Section 6.3
-above states the constraints; it does not make the allocation, which is a
-decision. One constraint is now tighter than when 6.3 was written: under the
+decision as open. The phase-code pins are now proposed on `PA2`–`PA7`.
+Section 6.3 above states the constraints; the draft `PA0`–`PA5` (whose `PA0`/`PA1`
+reused the pin numbers the CNVR lines claim on EXTI0/EXTI1) was shifted up two to
+satisfy them, and what remains for the whole map is the §8 datasheet check. One constraint is now tighter
+than when 6.3 was written: under the
 closed six-state cycle **all three phase bits toggle once per event in each
 direction**, so `b2` is a timing-relevant edge source rather than a static level,
 and a pin map drawn against the old four-state assumption would have
@@ -692,10 +699,10 @@ board.
 | `docs/dsc_hld.md` | This document | Draft |
 | `contracts/stage_minus1_contract.md` | Five questions, answered from declared constants | Closed |
 | `todos/stage0_todo.md` | Gates: claim, command, criterion, prediction | Complete |
-| `docs/adr/` | Thirteen entries; one marked superseded, one superseded but unmarked (O7) | Live |
+| `docs/adr/` | Fourteen entries; one marked superseded, one superseded but unmarked (O7), one proposed (`2026-09-09-stm32f411-pin-assignment`) | Live |
 | `docs/hardware-harness-v1/harness_timing_budget.md` | The arithmetic the harness is sized by | Complete |
 | `docs/hardware-harness-v1/phase_code_map.md` | Code-to-phase table, both roles, six states each | **Closed**, proved by `phase` in Tier 2 |
-| `docs/hardware-harness-v1/harness_spec.md` | Pin allocation, §4 | **Does not exist** (O3) |
+| `docs/hardware-harness-v1/harness_spec.md` | Pin allocation; I2C/CNVR/timebase recorded, §4 phase-bit pins open | **Exists**; phase-bit allocation open (O3) |
 | `harness/firmware/capture/` | Bare-metal capture engine | Tier 0 subset built |
 | `harness/firmware/dut/` | One image per role and per ablation | Empty, Tier 2 |
 | `harness/scripts/`, `harness/tests/` | Capture (may prompt) and test (may not) | `toolchain`, `blink` only |

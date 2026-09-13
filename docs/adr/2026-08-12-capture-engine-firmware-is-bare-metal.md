@@ -1,6 +1,6 @@
 # The capture engine firmware is bare-metal register-level, not CubeMX HAL
 
-**Date:** 2026-08-12 **Status:** Accepted
+**Date:** 2026-08-12 **Status:** Accepted; amended by [`2026-09-13-host-transport-native-usb-hal-scoped-to-measurement-path`](./2026-09-13-host-transport-native-usb-hal-scoped-to-measurement-path.md), which scopes the "no HAL" rule to the measurement path and admits a USB device stack for transport (the measurement-path decision below stands unchanged)
 **Amends:** `2026-08-09-capture-engine-is-stm32-part-still-open.md` (revises the
 toolchain clause only; the family decision, STM32, and the part decision,
 STM32F411CEU6 in `2026-08-12-capture-engine-part-is-stm32f411ceu6.md`, stand

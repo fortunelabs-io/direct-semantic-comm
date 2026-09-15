@@ -1,4 +1,4 @@
-# The capture-engine pin map is I2C1+I2C3, CNVR on EXTI0/1, TIM2 timebase — phase-bit pins excepted
+# The capture-engine pin map is I2C1+I2C3, CNVR on EXTI0/1, TIM2 timebase, phase-bit pins excepted
 
 **Date:** 2026-09-09 **Status:** Proposed
 **Argument of record:** O3 in [`docs/dsc_hld.md`](../dsc_hld.md), and the pin-map
@@ -16,7 +16,7 @@ Two of the functions are no longer open when this is written: the firmware
 already commits the two I2C buses ([`sensor.h`](../../harness/firmware/capture/sensor.h))
 and the TIM2 microsecond timebase ([`timing_budget.h`](../../harness/firmware/capture/timing_budget.h),
 [`timebase.c`](../../harness/firmware/capture/timebase.c)). This ADR records those
-as decided and mirrors them; it decides only the not-yet-built parts — the CNVR
+as decided and mirrors them; it decides only the not-yet-built parts: the CNVR
 edge lines and the phase-code bits.
 
 Populating the pin map is worth an ADR, not a commit message, because reversing
@@ -37,16 +37,16 @@ only at bring-up.
   values the firmware uses "cannot drift apart." A contract that named I2C2 while
   the firmware drives I2C3 would be precisely that drift. [HLD §6.3](../dsc_hld.md)
   independently lists PB6/PB7/PA8/PB4 as the two buses.
-- **Phase-code group on `PA0`–`PA5`.** Rejected: `PA0`/`PA1` reuse pin numbers 0
-  and 1, which the CNVR lines claim (`PB0`/`PB1` → EXTI0/EXTI1). Because EXTI line
+- **Phase-code group on `PA0`-`PA5`.** Rejected: `PA0`/`PA1` reuse pin numbers 0
+  and 1, which the CNVR lines claim (`PB0`/`PB1` to EXTI0/EXTI1). Because EXTI line
   number equals pin number regardless of port, that is a collision, violating
-  [§6.3 rule 1](../dsc_hld.md). An earlier `PC0`–`PC5` draft was rejected for
-  unconfirmed UFQFPN48 bonding. The group is instead proposed on `PA2`–`PA7`, the
+  [§6.3 rule 1](../dsc_hld.md). An earlier `PC0`-`PC5` draft was rejected for
+  unconfirmed UFQFPN48 bonding. The group is instead proposed on `PA2`-`PA7`, the
   same triples shifted up two to clear EXTI0/EXTI1.
 - **Mark the map `Accepted` on the strength of this search.** Rejected: the
   reproducibility standard this repository runs under treats a claim as a proposal
-  until a second party reproduces it against the primary source. That check
-  (`harness_spec.md` §8) has not run.
+  until a second party reproduces it against the primary source. That
+  primary-source check, described under Consequences below, has not run.
 
 ## Decision
 
@@ -61,12 +61,12 @@ against the primary-source PDF:
   firmware.** Configuring PB4 as `I2C3_SDA` releases NJTRST, so JTAG is
   unavailable after `sensor_bus_init()`; harmless over SWD.
 - **CNVR (INA226 conversion-ready) edge lines:** `CNVR_A = PB0` (EXTI0),
-  `CNVR_B = PB1` (EXTI1), rising edge. Two of EXTI0–EXTI4 with dedicated vectors,
+  `CNVR_B = PB1` (EXTI1), rising edge. Two of EXTI0-EXTI4 with dedicated vectors,
   per §6.3 rule 2. **Proposed; not yet in firmware.**
-- **Phase code:** three parallel bits per node, **proposed on `PA2`–`PA7`**
-  (Node A `PA2`/`PA3`/`PA4`, Node B `PA5`/`PA6`/`PA7`) — the withdrawn `PA0`–`PA5`
+- **Phase code:** three parallel bits per node, **proposed on `PA2`-`PA7`**
+  (Node A `PA2`/`PA3`/`PA4`, Node B `PA5`/`PA6`/`PA7`): the withdrawn `PA0`-`PA5`
   shifted up two to clear the CNVR pins on EXTI0/EXTI1, keeping both nodes in one
-  `GPIOA` read. Pending §8 bonded-out confirmation; not yet in firmware.
+  `GPIOA` read. Pending the datasheet bonded-out confirmation; not yet in firmware.
 - **Timebase:** `TIM2`, APB1, kernel clock 96 MHz, **`PSC = 95`** for an exact
   1 MHz tick, free-running 32-bit. **Committed in firmware**, statically asserted
   in `timing_budget.h`.
@@ -77,16 +77,16 @@ ADR records the decision and its status, not a duplicate of the tables.
 ## Consequences
 
 This commits the schematic to routing **I2C1 and I2C3** (not I2C2) for the two
-INA226 channels, and to the CNVR edges on EXTI0/EXTI1. It rules out the `PA0`–`PA5`
+INA226 channels, and to the CNVR edges on EXTI0/EXTI1. It rules out the `PA0`-`PA5`
 phase group as drawn. It does **not** leave the system clock or the timebase
-prescaler open — both are decided (SYSCLK 96 MHz, `PSC = 95`); the earlier
+prescaler open: both are decided (SYSCLK 96 MHz, `PSC = 95`); the earlier
 "prescaler blocked on a clock decision" is closed.
 
-The phase-code pins are now **proposed** on `PA2`–`PA7` rather than open; what
-remains for the whole map is the single §8 primary-source check, after which O3
-closes and KiCad is unblocked.
+The phase-code pins are now **proposed** on `PA2`-`PA7` rather than open; what
+remains for the whole map is the single primary-source datasheet check below,
+after which O3 closes and KiCad is unblocked.
 
-Before this ADR moves to `Accepted`, the checks in `harness_spec.md` §8 must
+Before this ADR moves to `Accepted`, the following primary-source checks must
 clear: confirmation against the datasheet PDF (not a search extraction) that the
 named pins are bonded out on UFQFPN48, and that the AF4/AF9 assignments hold in
 Table 9. Per [`git_sop.md`](../sop/git_sop.md), only an `Accepted` record is immutable;
@@ -94,5 +94,5 @@ while `Proposed`, a failed check is corrected in
 place (the status line is the one field an ADR edits), not by a new file. Once
 `Accepted`, a changed decision gets a new dated file superseding this one.
 
-Watch for: `PA2`–`PA7` bonding on UFQFPN48 is unconfirmed until §8; if any of the
-six is not bonded, the triple moves rather than the whole map.
+Watch for: `PA2`-`PA7` bonding on UFQFPN48 is unconfirmed until that check clears;
+if any of the six is not bonded, the triple moves rather than the whole map.

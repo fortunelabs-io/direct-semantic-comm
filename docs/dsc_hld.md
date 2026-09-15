@@ -570,7 +570,7 @@ that holding a finished table open behind an unwritten one reports a closed
 decision as open. The phase-code pins are now proposed on `PA2`–`PA7`.
 Section 6.3 above states the constraints; the draft `PA0`–`PA5` (whose `PA0`/`PA1`
 reused the pin numbers the CNVR lines claim on EXTI0/EXTI1) was shifted up two to
-satisfy them, and what remains for the whole map is the §8 datasheet check. One constraint is now tighter
+satisfy them, and what remains for the whole map is the pin-assignment ADR's primary-source datasheet check. One constraint is now tighter
 than when 6.3 was written: under the
 closed six-state cycle **all three phase bits toggle once per event in each
 direction**, so `b2` is a timing-relevant edge source rather than a static level,
@@ -702,7 +702,7 @@ board.
 | `docs/adr/` | Fourteen entries; one marked superseded, one superseded but unmarked (O7), one proposed (`2026-09-09-stm32f411-pin-assignment`) | Live |
 | `docs/hardware-harness-v1/harness_timing_budget.md` | The arithmetic the harness is sized by | Complete |
 | `docs/hardware-harness-v1/phase_code_map.md` | Code-to-phase table, both roles, six states each | **Closed**, proved by `phase` in Tier 2 |
-| `docs/hardware-harness-v1/harness_spec.md` | Pin allocation; I2C/CNVR/timebase recorded, §4 phase-bit pins open | **Exists**; phase-bit allocation open (O3) |
+| `docs/hardware-harness-v1/harness_spec.md` | Pin allocation; I2C/CNVR/timebase and §4 phase-bit pins all recorded | **Exists**; allocation decided, ADR datasheet check pending (O3) |
 | `harness/firmware/capture/` | Bare-metal capture engine | Tier 0 subset built |
 | `harness/firmware/dut/` | One image per role and per ablation | Empty, Tier 2 |
 | `harness/scripts/`, `harness/tests/` | Capture (may prompt) and test (may not) | `toolchain`, `blink` only |

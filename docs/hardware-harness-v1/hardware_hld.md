@@ -41,6 +41,13 @@ its citation at the point it appears; an unlabelled number is not released.
 | §5-§10 | Per-block component counts | `DERIVED` formulas; §5/§9 primary-confirmed; parts in §14 |
 | §11 | Consolidated BOM | roll-up of §4-§10 |
 | §12 | Verification required | the primary-source checks that bind the `BORROWED` cells |
+| §15 | Open items + the spike that closes them | what the fab trigger now waits on, ranked by cost of finding out late |
+
+The counts below are the intended design; they are not released to fab on
+datasheet reading alone. §15 places a throwaway spike (a Black Pill and an
+INA226 breakout) in front of the fab trigger, to close O1 and the architecture
+gates and to demonstrate the USB transport (R1) on real F411 silicon first. No
+decision in §13 is reversed by it.
 
 ---
 
@@ -452,8 +459,10 @@ Status as of 2026-09-13 (primary sources read directly this session where marked
 
 None of these is `MEASURED`; they are primary-source confirmations that turn a
 `BORROWED` proposal into a bound figure. The board is not sent to fab until they
-clear and the person-walk in [`review_checklist.md`](../../harness/hardware/review_checklist.md)
-is done - this file is a precondition for spending money, not evidence about the
+clear, the person-walk in [`review_checklist.md`](../../harness/hardware/review_checklist.md)
+is done, and the §15 spike has closed O1, `rate`, `dropped`, `wrap`, `jitter` and
+demonstrated the USB transport (R1) on silicon - this file is a precondition for
+spending money, not evidence about the
 harness ([`../../harness/hardware/README.md`](../../harness/hardware/README.md)).
 
 ---
@@ -552,3 +561,80 @@ and is set on the impedance-controlled layout, which is where every
 transmission-line value is fixed. All other datasheet-derived values (LDO caps,
 crystal load, ferrite, ESD) are bound to the parts above and confirmed on hardware
 at Tier 3 bring-up, not here.
+
+---
+
+## 15. Open items that should close before fabrication
+
+Every count in §4 through §11 is `BORROWED` or `DERIVED`, and the Status line is
+blunt that **no cell is `MEASURED`**. §12 turned datasheet readings into figures
+bound *on paper*. This section is the step that binds them *on silicon*, and it
+deliberately does not wait on the fabricated board. Ordered, like
+[`../dsc_hld.md`](../dsc_hld.md) §7, by the cost of finding a failure out late.
+
+### 15.1 The proving rig is a spike
+
+Per [`../sop/git_sop.md`](../sop/git_sop.md), a `spike/` branch is throwaway by
+declaration: never merged, its survivors rewritten onto a typed branch, so
+exploring the architecture never enters the record as though the dev-board
+hardware were the design. This rig is exactly that. **No ADR is written for it and
+no Accepted decision in §13 is reversed by it.** The clock, USB, and PCA9615
+choices remain the plan for the fabricated board; the spike is a precondition
+placed *in front of* the fab trigger, not a competitor to it.
+
+Two off-the-shelf parts, chosen for availability rather than for the design:
+
+| Rig part | Stands in for | What transfers, and what does not |
+|---|---|---|
+| WeAct STM32F411CEU6 "Black Pill" | the MCU (§5, §14.1) | Same silicon as the [part ADR](../adr/2026-08-12-capture-engine-part-is-stm32f411ceu6.md). Its HSE is **25 MHz** (`BORROWED`, WeAct board; confirmed the instant the PLL locks), not the 8 MHz of the [clock ADR](../adr/2026-09-13-capture-engine-clock-is-hse-8mhz-crystal.md). `PLLM 25 -> 1 MHz`, then `PLLN 192 -> 192 MHz VCO -> /2 = 96 MHz SYSCLK -> /4 = 48 MHz USB exactly`: the whole downstream tree of §3 transfers, only `PLLM` differs. The ±20 ppm *stability* of the chosen crystal does not transfer and is not claimed here. |
+| Aftermarket INA226 breakout | the remote INA226 (§9, §10) | An INA226 on 2.54 mm headers is the only way onto a breadboard: the design's bare VSSOP-10 cannot be, which is the whole reason O4 ([`../dsc_hld.md`](../dsc_hld.md) §7) owes a hand-assembled carrier. Whatever shunt the module carries **never enters a graded metrology gate**. O4 stands unchanged. |
+
+### 15.2 What the spike closes, and what it must not be read as closing
+
+**Closes** (architecture and plumbing, none of it dependent on the shunt value or
+the crystal part):
+
+- **O1, does the CNVR alert self-clear in transparent mode.**
+  [`../dsc_hld.md`](../dsc_hld.md) §7 names this the cheapest thing to test and the
+  most expensive to discover late, because the pessimistic reading reopens the bus
+  count and the board is laid out around the bus count. The breakout answers it
+  directly; whether the flag self-clears has nothing to do with the shunt.
+- **O2 / R1, the hand-written USB CDC stack holds 114 kB/s on F411 silicon.**
+  [`../dsc_hld.md`](../dsc_hld.md) §4.3 prices this transport as "substantially
+  more firmware than everything currently in `firmware/capture/` combined," and
+  unbuilt. Learning after fab that it does not hold rate is the exact late cost
+  this ordering exists to avoid.
+- `rate`, `dropped`, `wrap`, `jitter`: configuration-took, pointer retention at
+  400 kHz, monotonic timestamps across the 71.6-minute wrap, and the
+  timestamp-at-edge / read-at-leisure split ([`../dsc_hld.md`](../dsc_hld.md)
+  §6.2). The 1 µs tick and the scheduling jitter it must survive are independent
+  of whether the PLL source is 8 or 25 MHz.
+
+**Must not be read as closing:**
+
+- `gain` and `negctl`: both need the 0.1 Ω / 0.1 % shunt on a Kelvin carrier. The
+  breakout fails `gain` arithmetically (O4), so **no current-accuracy figure is
+  drawn from this rig, ever.**
+- The specific 8 MHz ±20 ppm crystal and its load network (§6, §14.1): proven only
+  on the fabricated board.
+- The **PCA9615 remote-differential link** (§9, §10). The breakout sits
+  single-ended on the breadboard beside the MCU; the cable, the buffer, and the
+  termination belong to the companion sense board (§11) and are proven when it
+  gets its HLD. The spike proves the capture-engine side, not the remote link.
+
+### 15.3 The open items, ranked
+
+| # | Open item | Closed by | Cost if found late |
+|---|---|---|---|
+| A | **O1** CNVR self-clear in transparent mode | spike, §15.2 | reopens the bus count, and the layout is drawn around it |
+| B | **O2 / R1** USB CDC transport unbuilt and unpriced | spike demonstrates on silicon; the [USB-transport ADR](../adr/2026-09-13-host-transport-native-usb-hal-scoped-to-measurement-path.md) already scopes a stack to transport | blocks `stream`, and `stream` blocks every Tier-1 gate that reads a capture |
+| C | CNVR external-vs-internal pull-up (§10 vs [`harness_spec.md`](./harness_spec.md) §3) | review walk; the spike can measure the internal pull-up's margin over a representative lead | a weak pull-up over a cable is noise-prone, and the divergence is not yet in the pin map |
+| D | Companion **remote sense board** HLD still owed (§11, §13) | its own HLD | it carries the PCA9615 link, the INA226 carrier, and the remote pull-ups; blocks the system, not this board's fab |
+| E | Layout-bound transmission-line values (§9 termination / idle-bias, §14.2) | the impedance-controlled layout | neither paper nor spike fixes them; they bind where every transmission-line value binds |
+
+**The decision this defers.** Items A and B are what the fab trigger now waits on,
+and both close on a breadboard rig rather than on a fabricated board. Until they
+close, §11's BOM and §14's part list are the *intended* design held one step back
+from fab, not released to it. This is the "prove something to close a gate" step
+in full: it does not prove the board, it removes the two holes whose late
+discovery would invalidate the layout.

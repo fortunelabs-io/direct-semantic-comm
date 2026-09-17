@@ -124,17 +124,17 @@ down. A row with no source is an invention and does not belong in the system.
 | ESP-NOW v1.0 for core runs, `L` = 250 B | Only version where the packet-count term is non-zero across the whole sweep | `contracts/stage_minus1_contract.md` Q1 |
 | IMU, 6-axis, int16, 100 Hz; latent width 64 int8 | Lowest acquisition current; one scalar size parameter | same, Q1 |
 | Shunt 0.1 Ω, high side, Kelvin | 2.5× headroom over the 330 mA transmit figure | same, Q5; timing budget §6 |
-| INA226 as a catalogue part, everything above it owned | Boundary drawn so the sensor is replaceable | `adr/…two-channel-harness-built-in-house.md` |
+| INA226 as a catalog part, everything above it owned | Boundary drawn so the sensor is replaceable | `adr/…two-channel-harness-built-in-house.md` |
 | Shunt-only continuous, 140 µs, AVG = 1 | POR default (1.1 ms ×2) is longer than a whole transmission | SBOS547B Tables 7-3/7-5/7-6; thinkbook §4.7 |
 | Alert pin as Conversion Ready | The INA226 timestamps nothing and I²C reads are not deterministic | SBOS547B §7.1.7 (CNVR, bit 10) |
-| Two I²C buses, fast mode | One bus at 400 kHz with pointer retained is 104 % utilised | timing budget §4 |
+| Two I²C buses, fast mode | One bus at 400 kHz with pointer retained is 104 % utilized | timing budget §4 |
 | Capture engine is STM32, family not capability | Sourcing depth and established skill; RP2040 also met all four | `adr/…capture-engine-is-stm32-part-still-open.md` |
 | Part is STM32F411CEU6 | Stock depth; F401CEU6 satisfied the gate identically | `adr/…capture-engine-part-is-stm32f411ceu6.md` |
 | Bare-metal, register level, no HAL | The ISR-to-read path must be this project's own code | `adr/…capture-engine-firmware-is-bare-metal.md` |
 | SYSCLK 96 MHz, not the part's 100 MHz | 100 MHz and an in-spec USB clock are mutually exclusive on this part | `timing_budget.h`; DocID026289 Rev 4 Table 41 |
-| 3-bit Gray-coded phase bus per node | A single toggle desynchronises a whole run on one missed edge | timing budget §1; `phase_code_map.md` |
+| 3-bit Gray-coded phase bus per node | A single toggle desynchronizes a whole run on one missed edge | timing budget §1; `phase_code_map.md` |
 | Timestamp at the edge, read at leisure | The 73 µs read and its jitter would land in the timebase | timing budget §8 |
-| Sensors free-run, never synchronised | The ledger needs a common *time*, not a common *sample instant* | same |
+| Sensors free-run, never synchronized | The ledger needs a common *time*, not a common *sample instant* | same |
 
 ---
 
@@ -212,7 +212,7 @@ The alternate function numbers are **not uniform**: AF4 on PB6, PB7, PA8, and
 **AF9 on PB4**. `sensor.c`'s header explains why this is the trap it is. Table 9
 heads AF04 "I2C1/I2C2/I2C3" and AF09 "I2C2/I2C3", so I2C3 appears in both
 columns and which applies is a per-pin fact. AF4 on PB4 is blank, so the wrong
-reading would have initialised cleanly, reported no error, and never reached the
+reading would have initialized cleanly, reported no error, and never reached the
 pad. That comment is load-bearing and should survive any refactor.
 
 **Register configuration** (SBOS547B §7.1, Tables 7-1 through 7-12):
@@ -251,7 +251,7 @@ the 400 kHz requirement are compatible, and the reason is the duty selection.
 | Read, pointer rewritten | ~48 | 120 µs | 86 % |
 | Two channels, one bus, retained | - | - | 104 %, fails |
 
-**Pointer retention is therefore an interface requirement, not an optimisation.**
+**Pointer retention is therefore an interface requirement, not an optimization.**
 The device retains the register pointer until a write changes it, so the steady
 state is: set the pointer to `01h` once at configuration, then issue address-plus-
 read forever. Any code path that writes the pointer inside the sample loop moves
@@ -264,7 +264,7 @@ transition. The canonical table is `phase_code_map.md` and **that file is right
 and the firmware is wrong** wherever they disagree.
 
 The width is derived, not chosen: a single toggle line encodes transitions but
-not identity, so one missed edge desynchronises every phase after it, silently,
+not identity, so one missed edge desynchronizes every phase after it, silently,
 for the rest of the run. Three bits are self-describing, cost the same single
 register write, and stay inside the ESP-NOW send-callback discipline where the
 vendor documentation forbids lengthy operations.
@@ -367,7 +367,7 @@ source of record.
 | Conversion time, both channels | 140 µs | fixed by configuration |
 | Conversions/s per channel | 7,143 | - |
 | Edge rate, total | < 30,000/s | three orders of magnitude |
-| I²C utilisation per bus | 52 % | the binding budget |
+| I²C utilization per bus | 52 % | the binding budget |
 | Timestamp resolution | 1 µs | ~100× the 1.4 µs requirement |
 | Jitter budget (`jitter` gate) | σ < 2 µs | TIM2 tick gives 2× margin, asserted in `timing_budget.h` |
 | Host stream | 114 kB/s | see 4.3; the record format under this figure is open |
@@ -502,10 +502,10 @@ placeholders that will silently under-deliver if carried forward:
 **I²C is configured for 100 kHz standard mode.** `timing_budget.h` sets
 `I2C_TARGET_SCL_HZ` to 100000 with `CCR = 240`, `TRISE = 49`. The whole harness
 budget is stated at 400 kHz. At 100 kHz a pointer-retained 16-bit read is ~290 µs
-against a 140 µs conversion: **207 % utilisation**, which drops roughly every
+against a 140 µs conversion: **207 % utilization**, which drops roughly every
 other conversion on both channels. This is not a defect today: `sensor.h` states
 that the INA226 layer is Tier 1 work and Tier 0 only needs both peripherals to
-initialise cleanly. It becomes a defect the moment the `rate` gate runs against
+initialize cleanly. It becomes a defect the moment the `rate` gate runs against
 it, and the failure would present as a sensor or driver problem rather than as a
 clock configuration. The move to fast mode also needs `I2C_CCR_FS` (bit 15) and
 `I2C_CCR_DUTY` (bit 14) added to `register_map.h`, neither of which is defined.
@@ -586,7 +586,7 @@ requirement rather than merely warning about a part. **The figure previously giv
 in this section, 165 µV, was wrong by a factor of four:** 0.002 Ω against 330 mA
 is 660 µV, not 165 µV, of an 81.92 mV span. The stronger form of the argument is
 not in microvolts anyway. At 0.002 Ω one LSB is 2.5 µV / 0.002 Ω = **1.25 mA**,
-so the 97 mA receive level is 78 counts and quantisation alone contributes 1.3 %
+so the 97 mA receive level is 78 counts and quantization alone contributes 1.3 %
 per count, against the `gain` gate's 0.5 % criterion. Such a breakout fails that
 gate arithmetically, whatever calibration is applied to it. Buying the bare part
 removes the question rather than answering it: there is no inherited shunt, so no

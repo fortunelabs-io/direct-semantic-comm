@@ -1,4 +1,4 @@
-# Direct Semantic Communication on Constrained Hardware: A Thinkbook
+# Direct Semantic Communication on constrained hardware: a thinkbook
 
 *Notes toward a two-node, two-sided, physically instrumented test of semantic payload transfer, written before any board has been flashed. Every number in this document that was not measured by this project is marked as borrowed. Borrowed numbers are expectations, not findings.*
 
@@ -20,7 +20,7 @@ A second discipline carries over from the parent build's own failures. Predictio
 
 ---
 
-## 1. Problem Statement
+## 1. Problem statement
 
 Two microcontrollers share a low-power radio link. Node S has produced some internal state, a reading, a signal, a partial computation, sitting in its own SRAM. Node R needs to act on what that state means. Getting meaning from S's SRAM into R's decision requires one physical act: serialize the state into a payload, hand it to the radio, let the radio cut it into frames small enough to fit the link's hardware limit, transmit those frames one at a time, and let R reassemble and interpret them.
 
@@ -56,7 +56,7 @@ Everything below serves that question.
 
 ---
 
-## 2. The Gaps
+## 2. The gaps
 
 Each gap is stated with the closest existing work and what that work stops short of. Where an earlier draft of this document overstated a gap, the correction is kept visible rather than silently applied.
 
@@ -94,7 +94,7 @@ A search across the semantic communication literature (Tsinghua, SJTU, XJTU grou
 
 ---
 
-## 3. The Proposed Solution
+## 3. The proposed solution
 
 The proposed solution treats Option 3 from Section 1 as two separate hypotheses, tested in sequence, never merged under one label.
 
@@ -155,7 +155,7 @@ Components communicate through flat files and serial text. Any single component 
 
 ---
 
-## 4. The Mathematics and the Architecture
+## 4. The mathematics and the architecture
 
 ### 4.1 Cost model
 
@@ -343,7 +343,7 @@ The sufficiency and collapse constraints of 4.6 carry over unchanged in form but
 
 ---
 
-## 5. Proof Steps
+## 5. Proof steps
 
 Each stage is named by the condition it can kill and ordered by the cost of killing it, not by the order components appear in the system. The last column is the one that makes the ordering load-bearing: it states what becomes void if that stage fails after later stages have already been paid for.
 
@@ -425,11 +425,11 @@ A negative result here, ledger favorable but transfer unusable, or transfer usab
 
 ---
 
-## 6. Builder Knowledge
+## 6. Builder knowledge
 
 Three classes. Class A is load-bearing: specifications and peer-reviewed measurements this design directly depends on, plus this project's own validated findings. Class B is methodological: repos and papers whose techniques are adopted or adapted. Class C is contextual: surveys and community writing that orient but never justify a design decision. A claim may cite downward for color, never upward for support.
 
-### Class A: Primary
+### Class A: primary
 
 | Source | What it anchors |
 |---|---|
@@ -444,7 +444,7 @@ Three classes. Class A is load-bearing: specifications and peer-reviewed measure
 | Parent build, `cache-2-cache-lite`, `FINDINGS.md` | The validated Python-tier result that a representation crosses an independently trained boundary and carries value, under paired statistics with per-sample records. Also the source of three disciplines adopted here verbatim in form: the null before the trained comparison, the decomposition of a total into the part the grader can see and the part it cannot, and the collapse signature that an aggregate cannot detect. Its third open item is this document. |
 | Fu et al., C2C (ICLR 2026), section 3.3.4 | The freeze-both-then-train-only-the-bridge protocol Stage 5 physically mirrors. **Scope note:** this anchors H_transfer as a fair test of C2C's *training protocol*. It is not a test of C2C's medium. C2C never claims its transferred cache is smaller than the alternative; its latency gain comes from avoiding sequential decoding, not from moving fewer bytes. The compression framing is this project's, and it is this project's to defend. |
 
-### Class B: Secondary
+### Class B: secondary
 
 | Source | What is taken from it |
 |---|---|
@@ -458,7 +458,7 @@ Three classes. Class A is load-bearing: specifications and peer-reviewed measure
 | TinyML autoencoder deployments on ESP32-S3, e.g. arXiv:2606.02256 | Proof the Condition B encoder is deployable as int8 under TFLite Micro on this chip class; the encoder is adopted practice, not a contribution. |
 | Parent build, `c2c_first_principle.md` | The four-condition derivation Section 1 inherits, and the build-order thesis Section 5 inherits: each condition has its own cheapest falsification, and the build order is the ascending order of those costs. |
 
-### Class C: Tertiary
+### Class C: tertiary
 
 | Source | Orientation provided |
 |---|---|
@@ -471,7 +471,7 @@ Three classes. Class A is load-bearing: specifications and peer-reviewed measure
 
 ---
 
-## 7. Predictions Ledger
+## 7. Predictions ledger
 
 Recorded before the runs that adjudicate them. Written down afterward, a prediction is worth nothing.
 
@@ -508,7 +508,7 @@ Four readings have already been overturned by reading rather than by measurement
 
 ---
 
-## Closing Note
+## Closing note
 
 The parent project earned its rules by breaking things: the extractor that lied politely, the position bug that passed every shape check, the probe that passed for a full run while comparing the wrong quantity. This document is an attempt to pay for fewer of those lessons twice. The contract precedes the hardware (Stage -1), the harness is validated in three directions before it is trusted (Stage 0), the null precedes the comparison it gives meaning to (Stage 1), the cheap probe precedes the expensive sweep, the sufficiency and collapse audit precedes every efficiency claim (4.6), and borrowed numbers are quarantined from measured ones by construction.
 

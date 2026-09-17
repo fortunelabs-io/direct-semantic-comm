@@ -50,7 +50,7 @@ Option 3 is the only point in this design space where the cost paid at S, the co
 
 ### 1.3 The question
 
-> On two ESP32-S3 nodes linked by ESP-NOW, does a learned intermediate representation actually clear both binding constraints at once, in measured joules and milliseconds, once the sender's encode cost and the receiver's decode cost are both charged against the frames it saves?
+> On two ESP32-S3 nodes linked by ESP-NOW, does a learned intermediate representation clear both binding constraints at once, in measured joules and milliseconds, once the sender's encode cost and the receiver's decode cost are both charged against the frames it saves?
 
 Everything below serves that question.
 
@@ -217,7 +217,7 @@ Semantic transfer wins if and only if:
 
 $$E_{\mathrm{enc}} + E_{\mathrm{use}} - E_{\mathrm{proc}} \;<\; \left[ n(p_{\mathrm{raw}}) - n(p_{\mathrm{lat}}) \right]\left( E_{\mathrm{pkt}} + E'_{\mathrm{pkt}} \right) + \left( p_{\mathrm{raw}} - p_{\mathrm{lat}} \right)\left( e_{\mathrm{byte}} + e'_{\mathrm{byte}} \right)$$
 
-The wake terms have cancelled. Left side: the net compute premium of the semantic path. Right side: the communication savings, split into a packet-count term and a byte-count term.
+The wake terms have canceled. Left side: the net compute premium of the semantic path. Right side: the communication savings, split into a packet-count term and a byte-count term.
 
 The central hypothesis, H1, is that on a low-power connectionless radio the packet-count term dominates the byte-count term, so the win condition is governed by whether the latent fits in fewer frames, not merely fewer bytes. Under H1, $E(p)/p$ is sawtooth-shaped: falling within each frame, jumping at each multiple of $L$.
 
@@ -289,14 +289,14 @@ Phase boundaries on S: sleep, wake, encode, transmit, sleep. On R: sleep, wake, 
 
 The single clock is the reason the harness exists. Commercially available low-power current meters in the price class this project can reach measure one rail. Two of them give two timebases with no shared reference, and stitching those together is an assumption rather than a measurement. A two-sided ledger cannot be built on an assumption about time, and Gap 1 may persist in the literature partly for that reason: the standard instrument meters one node, and so the published work meters one node.
 
-The sensors are INA226 parts, chosen as catalogue components rather than as an instrument. Everything above them, the capture engine, the timebase, the wire protocol, the calibration procedure and the host tooling, belongs to this project and can be reproduced by anyone reading the published design. The sensor can be substituted later without touching any other layer, which is the point of drawing the boundary there.
+The sensors are INA226 parts, chosen as catalog components rather than as an instrument. Everything above them, the capture engine, the timebase, the wire protocol, the calibration procedure and the host tooling, belongs to this project and can be reproduced by anyone reading the published design. The sensor can be substituted later without touching any other layer, which is the point of drawing the boundary there.
 
 Sensor configuration, all of it forced by the datasheet rather than chosen:
 
 - **Shunt-only continuous mode** at the fastest conversion time, 140 microseconds, with averaging set to one. The power-on default is 1.1 milliseconds on each of shunt and bus with shunt-and-bus continuous mode, roughly 2.2 milliseconds per pair, which is longer than an entire 8-byte transmission and would render the transmit phase invisible.
 - **Supply voltage measured once per run, DUT rail computed per sample.** Only the supply upstream of the shunt is treated as constant. The rail the DUT actually sees is that supply minus the shunt drop, which at 0.1 ohm and a 330 mA transmit peak is 33 millivolts, one percent. Treating the DUT rail itself as constant would put that one percent straight into every transmit-phase power figure. The correction is exact and free, since the current is already measured: the DUT rail per sample is the supply minus the measured current times the measured shunt value. A periodic bus-voltage conversion, roughly one sample in a hundred, monitors the supply assumption at one percent of the conversion budget rather than assuming it.
 - **Fast-mode I2C at 400 kHz, one bus per channel, with the register pointer retained.** The datasheet states the pointer persists until a write changes it, so repeated reads of the shunt voltage register do not resend it. That brings a read to roughly seventy-three microseconds against a hundred and forty microsecond conversion, about half the budget, and two channels on two buses fit. Rewriting the pointer each time costs eighty-six percent and two channels on one bus fails outright. High-speed mode at 2.94 MHz is the fallback if measured margin is worse than this arithmetic, not the starting point.
-- **Alert pin configured as Conversion Ready** (the CNVR bit of the Mask/Enable register), routed into the capture engine alongside the phase markers. The INA226 timestamps nothing and I2C reads are not deterministic, so without a hardware edge per completed conversion there is no honest way to place a sample in time. This is the interface between the catalogue sensor and the part of the harness this project owns.
+- **Alert pin configured as Conversion Ready** (the CNVR bit of the Mask/Enable register), routed into the capture engine alongside the phase markers. The INA226 timestamps nothing and I2C reads are not deterministic, so without a hardware edge per completed conversion there is no honest way to place a sample in time. This is the interface between the catalog sensor and the part of the harness this project owns.
 - **Alert latch set to transparent**, so the conversion-ready flag self-clears and no Mask/Enable read is needed per conversion. This halves the edge rate into the capture engine and removes one bus transaction per sample.
 - **Shunt voltage register only.** Bus voltage is not converted, the calibration register is never programmed, and current is computed on the host where the shunt value is auditable.
 - **Kelvin, four-wire connection to the shunt**, per the datasheet layout guidance.
@@ -349,7 +349,7 @@ Each stage is named by the condition it can kill and ordered by the cost of kill
 
 **The harness build sits outside this ladder.** Constructing the instrument of 4.7 costs weeks and a fabrication run, which is more than Stage 1 and possibly more than Stage 2, so treating it as a stage would break the ordering the table depends on. It is capital expenditure, not a hypothesis: it kills no condition and answers no question. Stage 0 is the harness's acceptance test, not its construction, and as a gate it costs days once the instrument exists.
 
-That split leaves one exposure worth naming. A phase that produced its own artefact and then judged it would have no independent gate, and the parent build was bitten by exactly that shape: a probe that passed for a full run while comparing the wrong quantity, written by the same hand as the thing it probed. The mitigation is that Stage 0's instrument checks reference standards outside the harness, a precision resistor and an independent voltmeter for gain, the device under test's own clock for timing. The validator is a resistor rather than a judgement, and that is what makes self-validation admissible here.
+That split leaves one exposure worth naming. A phase that produced its own artifact and then judged it would have no independent gate, and the parent build was bitten by exactly that shape: a probe that passed for a full run while comparing the wrong quantity, written by the same hand as the thing it probed. The mitigation is that Stage 0's instrument checks reference standards outside the harness, a precision resistor and an independent voltmeter for gain, the device under test's own clock for timing. The validator is a resistor rather than a judgment, and that is what makes self-validation admissible here.
 
 | Stage | What it can kill | Cost | Void if it fails late |
 |---|---|---|---|
@@ -407,7 +407,7 @@ The $k$-payloads-per-wake regression, at fixed payload size, fitting $E_{\mathrm
 
 The broadcast-against-unicast pair, at each swept size, separating retransmission energy from frame energy. Broadcast carries no acknowledgement and therefore no retries; unicast retries up to its configured limit. The retry limit itself is recorded per run.
 
-Report median, P95, P99 per size; the latency distribution is expected heavy-tailed, and under unicast the tail is expected to be governed by retry count rather than by payload size. Deliverable: the sawtooth curve with confidence bands, TX-side and RX-side plotted separately, with $E_{\mathrm{wake}}$ and the retransmission share reported as their own quantities. This is the project's first genuinely novel artifact regardless of what comes after.
+Report median, P95, P99 per size; the latency distribution is expected heavy-tailed, and under unicast the tail is expected to be governed by retry count rather than by payload size. Deliverable: the sawtooth curve with confidence bands, TX-side and RX-side plotted separately, with $E_{\mathrm{wake}}$ and the retransmission share reported as their own quantities. This is the project's first novel artifact regardless of what comes after.
 
 **Stage 3: the two-sided ledger, swept (H_ledger).** Introduce the jointly trained encoder on S and the matching decoder on R. Run Conditions A and B on identical input sets. Charge every phase to its node, by firmware-variant ablation per 4.2 rather than by intra-event segmentation. Verify the sufficiency, collapse, and delivery checks of 4.6 per sample before admitting any efficiency comparison.
 

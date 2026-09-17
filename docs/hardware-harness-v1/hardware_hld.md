@@ -65,7 +65,7 @@ differential I²C bus buffer, one per channel: it converts each single-ended
 open-drain bus into a differential pair that survives a cable, then converts it
 back at the far end. This is the mechanism behind the requirement in
 [`review_checklist.md`](../../harness/hardware/review_checklist.md) that the two
-buses be "brought out separately," and it introduces a new catalogue component on
+buses be "brought out separately," and it introduces a new catalog component on
 the same footing as the INA226 - see §11's consequences.
 
 ```
@@ -344,7 +344,7 @@ rails. The differential bus is terminated per the datasheet (section 7.2, Figure
 
 | Item | Count | Value | Provenance |
 |---|---:|---|---|
-| PCA9615 IC | 2 | - | this file (new catalogue part) |
+| PCA9615 IC | 2 | - | this file (new catalog part) |
 | Decoupling | 4 | 100 nF per supply pin, both V_DD(A) and V_DD(B) | confirmed, PCA9615 Rev 2 (two supplies) |
 | EN handling | 0 | internal pull-up to V_DD(A); floats high to enable | confirmed, PCA9615 Rev 2 Table 3 |
 | Differential termination / bias | 3 per pair | ~100 ohm term both ends + idle bias, section 7.2 / Fig 5 | confirmed structure, PCA9615 Rev 2; values at schematic |
@@ -481,10 +481,10 @@ change to a committed artifact is an ADR, not a quiet edit. All three ADRs are
   `PLLN` 192->96) in one change so the header and the record "cannot drift apart."
   The pin-assignment ADR's timebase decision (TIM2, PSC 95) is unaffected: only the
   oscillator feeding the PLL moves, and every downstream frequency is identical.
-- **The PCA9615 is a new catalogue component.** The in-house-harness ADR
+- **The PCA9615 is a new catalog component.** The in-house-harness ADR
   ([`2026-08-09-two-channel-harness-built-in-house.md`](../adr/2026-08-09-two-channel-harness-built-in-house.md))
   scopes the harness to "the timebase, not the front end," with the INA226 as a
-  catalogue part. Adding a differential I²C buffer between the capture engine and
+  catalog part. Adding a differential I²C buffer between the capture engine and
   each remote INA226 is within that scope (it extends the bus, not the front end),
   but it introduces a part the ADRs do not name and a **remote sense board** the
   file map does not list. Recorded in

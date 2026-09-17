@@ -110,13 +110,13 @@ with its consequence; §11 lists the ADRs each one obliges.
 | D2 | Clock source | **HSE crystal, 8 MHz** | supersedes the **HSI** PLL source in [`../dsc_hld.md`](../dsc_hld.md) §6.1 / `timing_budget.h` (§3) |
 | D3 | Remote power | **Sense side only** (3.3 V to remote INA226 + PCA9615; DUT self-powered) | new; sizes the LDO in §4 |
 
-**Why native USB** The stream is 114 kB/s
+**Why native USB.** The stream is 114 kB/s
 ([`harness_timing_budget.md`](./harness_timing_budget.md) §5); USB full-speed is
 12 Mbit/s, ~10× headroom, and the STM32 has the peripheral on-die, so native USB
 adds no bridge IC and removes the baud question. The cost is firmware, not parts,
 and it lands on an already-open item (§11, R1).
 
-**Why using crystal.** Two reasons, either sufficient:
+**Why the crystal.** Two reasons, either sufficient:
 
 1. **Timebase accuracy.** HSI is ±1 % over temperature (`BORROWED`, DocID026289
    Rev 4, HSI accuracy table - §12 check). Over a 20-minute campaign
@@ -208,7 +208,7 @@ over a short JST-PH lead is < 1 % of 3.3 V and is neglected; noted, not counted.
 
 ---
 
-## 5. Decoupling network - STM32F411CEU6 (UFQFPN48)
+## 5. Decoupling network: STM32F411CEU6 (UFQFPN48)
 
 Method: one 100 nF close-in capacitor per supply pin, plus one bulk reservoir per
 ST's power-supply scheme, plus the two mandatory analog/core nets the part
@@ -358,7 +358,7 @@ remote sense board; they are enumerated when that board gets its own HLD (§11).
 
 ---
 
-## 10. Cable interface - CNVR and phase, single-ended over JST-PH
+## 10. Cable interface: CNVR and phase, single-ended over JST-PH
 
 Per node the JST-PH carries the differential I²C pair (buffered, §9) plus four
 single-ended lines: CNVR (1) and phase (3). Two nodes → **8 single-ended
@@ -467,7 +467,7 @@ harness ([`../../harness/hardware/README.md`](../../harness/hardware/README.md))
 
 ---
 
-## 13. Consequences - records this file obliges
+## 13. Consequences: records this file obliges
 
 Three of the decisions here change committed artifacts, and in this repository a
 change to a committed artifact is an ADR, not a quiet edit. All three ADRs are

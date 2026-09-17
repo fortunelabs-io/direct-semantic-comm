@@ -1,4 +1,4 @@
-# Harness v1: Signal Inventory and Timing Budget
+# Harness v1: signal inventory and timing budget
 
 *Stage -1 arithmetic for the two-channel metering harness. Every figure here is derived from declared constants: the INA226 datasheet, the I2C specification, and the phase structure in section 4.7 of the thinkbook. Nothing here is measured. The purpose is to fix the capture engine's requirements before any part is ordered.*
 
@@ -21,7 +21,7 @@ Two metered nodes. Each contributes one conversion-ready line from its current s
 
 **Why a 3-bit phase code rather than one toggle line.** Node S passes through sleep, wake, encode, transmit, sleep. Node R passes through sleep, wake, receive, decode or process, sleep. Four states each as counted here, plus room for an armed state and an error state. A single toggle line encodes transitions but not identity, so one missed edge desynchronises every phase after it for the rest of the run, silently. A 3-bit code is self describing: any sample of the bus states which phase the node is in, and a missed transition costs one boundary rather than a run.
 
-**The four-state count above was superseded when the sequence was actually written out.** [`phase_code_map.md`](./phase_code_map.md) closes at **six** states per role: acknowledgement is a phase in both roles rather than R's alone, sleep entry is marked in its own right per the wake-cost ADR, and five states cannot close at Hamming distance 1 because a closed cycle changes every bit an even number of times. The 3-bit conclusion survives intact, and this is the entry worth noting: 3 bits was sized here with four codes spare, and six states plus armed plus error consumes all eight. **The width now has zero headroom.** A seventh phase would need a fourth pin per node, which is a decision rather than an adjustment, and the constraint belongs here where the width was derived.
+**The four-state count above was superseded when the sequence was written out.** [`phase_code_map.md`](./phase_code_map.md) closes at **six** states per role: acknowledgement is a phase in both roles rather than R's alone, sleep entry is marked in its own right per the wake-cost ADR, and five states cannot close at Hamming distance 1 because a closed cycle changes every bit an even number of times. The 3-bit conclusion survives intact, and this is the entry worth noting: 3 bits was sized here with four codes spare, and six states plus armed plus error consumes all eight. **The width now has zero headroom.** A seventh phase would need a fourth pin per node, which is a decision rather than an adjustment, and the constraint belongs here where the width was derived.
 
 Three bits also stays inside the callback discipline. Writing three bits is one masked register write on the DUT, which is the same cost as toggling one, and the send callback runs from a high priority Wi-Fi task where nothing longer is permitted.
 

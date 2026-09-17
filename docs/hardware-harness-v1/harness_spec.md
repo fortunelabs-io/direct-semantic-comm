@@ -80,7 +80,7 @@ every Port B I2C2/I2C3 SDA sits at AF09 (PB3, PB4, PB8, PB9) while the clocks si
 at AF04; **AF04 on PB4 is blank, not a different function.** Reading the column
 header alone and applying AF4 to all four pins is the error
 [`sensor.c`](../../harness/firmware/capture/sensor.c) exists to stop being made
-twice: it would have initialised cleanly and driven the wrong pin.
+twice: it would have initialized cleanly and driven the wrong pin.
 
 **Consequence: JTAG is released.** PB4 is `NJTRST` at reset and belongs to the
 SWJ-DP group. Configuring it as `I2C3_SDA` releases the JTAG reset line, so **JTAG
@@ -88,7 +88,7 @@ is unavailable once `sensor_bus_init()` runs.** Harmless: the ST-Link attaches
 over SWD on PA13/PA14. Recorded in `sensor.h` so it is not rediscovered as a
 symptom.
 
-**Bus speed.** The harness budget is stated at 400 kHz (52% bus utilisation per
+**Bus speed.** The harness budget is stated at 400 kHz (52% bus utilization per
 channel; one shared bus would be 104% and fail outright, per
 [`review_checklist.md`](../../harness/hardware/review_checklist.md)). Tier 0
 firmware brings both peripherals up at 100 kHz standard mode as a placeholder;

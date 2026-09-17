@@ -49,7 +49,7 @@ cannot rest on an assumption about time.
 
 The tiers are asymmetric in an important way. The experiment tier can be wrong
 and the data will say so. **The instrument tier can be wrong and the data will
-look fine** — this is stated in the bare-metal ADR as the reason the capture
+look fine.** This is stated in the bare-metal ADR as the reason the capture
 engine is the highest cost-of-failure software in the project. That asymmetry is
 why the majority of this document is about the instrument.
 
@@ -209,7 +209,7 @@ same constants in `sensor.c` so the Tier 0 datasheet record and the firmware
 cannot drift apart.
 
 The alternate function numbers are **not uniform**: AF4 on PB6, PB7, PA8, and
-**AF9 on PB4**. `sensor.c`'s header explains why this is the trap it is — Table 9
+**AF9 on PB4**. `sensor.c`'s header explains why this is the trap it is. Table 9
 heads AF04 "I2C1/I2C2/I2C3" and AF09 "I2C2/I2C3", so I2C3 appears in both
 columns and which applies is a per-pin fact. AF4 on PB4 is blank, so the wrong
 reading would have initialised cleanly, reported no error, and never reached the
@@ -224,7 +224,7 @@ pad. That comment is load-bearing and should survive any refactor.
 | Shunt Voltage `01h` | read only | Two's complement, LSB 2.5 µV, full scale 81.92 mV |
 | Calibration `05h` | never written | Current is computed on the host, where the shunt value is auditable |
 
-POR is `0x4127` — shunt *and* bus continuous at 1.1 ms each. A rate near half of
+POR is `0x4127`: shunt *and* bus continuous at 1.1 ms each. A rate near half of
 7,143 conv/s is therefore the signature of a configuration that never took, and
 `todos/stage0_todo.md` already records that prediction against the `rate` gate.
 **The configuration is read back from the device rather than assumed from what
@@ -249,7 +249,7 @@ the 400 kHz requirement are compatible, and the reason is the duty selection.
 |---|---|---|---|
 | Read, pointer retained | ~29 | 73 µs | **52 %** |
 | Read, pointer rewritten | ~48 | 120 µs | 86 % |
-| Two channels, one bus, retained | — | — | 104 %, fails |
+| Two channels, one bus, retained | - | - | 104 %, fails |
 
 **Pointer retention is therefore an interface requirement, not an optimisation.**
 The device retains the register pointer until a write changes it, so the steady
@@ -305,7 +305,7 @@ against the six legal one-bit edges plus armed-to-wake plus any-code-to-error.
 The criterion in `todos/stage0_todo.md` was edited by the `spec` commit that
 closed the choice, before the gate was written or run.
 
-### 4.3 Capture engine → host (wire protocol) — **OPEN, and the largest hole**
+### 4.3 Capture engine → host (wire protocol): **OPEN, and the largest hole**
 
 The timing budget §5 prices this interface at an 8-byte record (shunt reading,
 timestamp, channel tag) at 14,286 records/s, giving 114 kB/s. `stream.c` does not
@@ -342,7 +342,7 @@ one distinction the `dropped` and `phase` gates are separately stated against.
 **The transport itself is unbuilt and unpriced.** `register_map.h` has no USB
 peripheral and there is no device stack. Under
 `adr/…capture-engine-firmware-is-bare-metal.md`, no vendor HAL may be used, so
-USB CDC here means a hand-written USB device stack — substantially more firmware
+USB CDC here means a hand-written USB device stack, substantially more firmware
 than everything currently in `firmware/capture/` combined. The timing budget's
 own fallback (UART at 2 Mbaud, which it prices and then sets aside because "USB
 CDC removes the baud rate question") is the cheap path and should be re-costed
@@ -365,14 +365,14 @@ source of record.
 | Quantity | Value | Slack |
 |---|---|---|
 | Conversion time, both channels | 140 µs | fixed by configuration |
-| Conversions/s per channel | 7,143 | — |
+| Conversions/s per channel | 7,143 | - |
 | Edge rate, total | < 30,000/s | three orders of magnitude |
 | I²C utilisation per bus | 52 % | the binding budget |
 | Timestamp resolution | 1 µs | ~100× the 1.4 µs requirement |
 | Jitter budget (`jitter` gate) | σ < 2 µs | TIM2 tick gives 2× margin, asserted in `timing_budget.h` |
-| Host stream | 114 kB/s | see 4.3 — the record format under this figure is open |
+| Host stream | 114 kB/s | see 4.3; the record format under this figure is open |
 | Shunt full scale | 819 mA vs 330 mA transmit | 2.5× |
-| Resolution | 25 µA/LSB; transmit = 13,200 counts | — |
+| Resolution | 25 µA/LSB; transmit = 13,200 counts | - |
 | Deep sleep, 8.14 µA | 0.33 counts | **below one bit; not measured, by declaration** |
 
 Two limits are architecture, not tolerance, and both are stated in advance rather
@@ -382,8 +382,7 @@ than discovered:
 average, so a conversion straddling a phase boundary blends both phases. Boundary
 location carries an intrinsic uncertainty of one conversion time, ~140 µs, which
 against a ~1 ms transmit phase is order 10 %. Nothing in the project depends on
-locating a boundary more precisely, because every term is identified across runs
-— that is the whole content of
+locating a boundary more precisely, because every term is identified across runs. That is the whole content of
 `adr/…terms-identified-by-design-not-by-waveform.md`, and any future result that
 requires resolving inside an event supersedes that ADR rather than stretching it.
 
@@ -450,13 +449,13 @@ CNVR rising edge on EXTI
 **The pairing rule is not pedantry.** The read is 73 µs against a 140 µs
 conversion, so in the nominal case it finishes before the next edge and "latest"
 would work. It works right up until it does not, and when it stops working it
-mislabels a sample rather than dropping one — a corruption the `dropped` gate
+mislabels a sample rather than dropping one, a corruption the `dropped` gate
 cannot see, because the record count is still right. Queue depth ≥ 2 and explicit
 sequence pairing make the failure a detectable drop instead of a silent
 mislabel.
 
 **The failure signature is already on record**, and it is a good one: if the read
-is left inside the ISR, σ lands near 73 µs — the read duration at 400 kHz with
+is left inside the ISR, σ lands near 73 µs, the read duration at 400 kHz with
 the pointer retained. A wide histogram is then diagnosable in one glance rather
 than by bisection.
 
@@ -470,12 +469,12 @@ via SYSCFG_EXTICR). Two consequences bind the pin allocation that
 `harness_spec.md` §4 is supposed to hold:
 
 1. **The ten harness inputs must occupy ten distinct pin numbers.** Not ten free
-   pins — ten distinct *numbers* across all ports. PA8 and PB8 cannot both be
+   pins: ten distinct *numbers* across all ports. PA8 and PB8 cannot both be
    edge sources.
 2. **EXTI0 through EXTI4 have dedicated IRQs; EXTI9_5 and EXTI15_10 are shared.**
    The two CNVR lines carry 14,286 edges/s each and are the timing-critical
    inputs; the six phase lines carry ~400/s in total. **The two CNVR lines should
-   take two of EXTI0–EXTI4**, so neither ever waits behind the other in a shared
+   take two of EXTI0-EXTI4**, so neither ever waits behind the other in a shared
    vector, and the phase lines can share.
 
 A third rule falls out of the phase bus rather than the interrupt controller:
@@ -488,7 +487,7 @@ was adopted to make impossible.
 Already spoken for and unavailable: PB6, PB7, PA8, PB4 (the two I²C buses),
 PA13/PA14 (SWD), and PC13 if the breakout LED is retained. Note also that
 configuring PB4 as I2C3_SDA releases NJTRST, so **JTAG is unavailable once
-`sensor_bus_init()` runs** — harmless because the ST-Link attaches over SWD, and
+`sensor_bus_init()` runs.** This is harmless because the ST-Link attaches over SWD, and
 recorded in `sensor.h` so it is not rediscovered as a symptom.
 
 **`register_map.h` does not yet contain SYSCFG, EXTI, or NVIC**, nor
@@ -503,7 +502,7 @@ placeholders that will silently under-deliver if carried forward:
 **I²C is configured for 100 kHz standard mode.** `timing_budget.h` sets
 `I2C_TARGET_SCL_HZ` to 100000 with `CCR = 240`, `TRISE = 49`. The whole harness
 budget is stated at 400 kHz. At 100 kHz a pointer-retained 16-bit read is ~290 µs
-against a 140 µs conversion — **207 % utilisation**, which drops roughly every
+against a 140 µs conversion: **207 % utilisation**, which drops roughly every
 other conversion on both channels. This is not a defect today: `sensor.h` states
 that the INA226 layer is Tier 1 work and Tier 0 only needs both peripherals to
 initialise cleanly. It becomes a defect the moment the `rate` gate runs against
@@ -528,13 +527,12 @@ gate's authority runs out.
 The ordering is the project's own rule: cost of discovering a failure late, which
 is the work a failed gate invalidates behind it.
 
-**O1 — Does the Conversion Ready alert actually self-clear in transparent mode?**
+**O1. Does the Conversion Ready alert actually self-clear in transparent mode?**
 The design halves the edge rate and drops one bus transaction per conversion by
 setting LEN = 0, on the reading that the flag self-clears. SBOS547B does not
 settle this in one place. §7.1.7 says the Alert Latch Enable bit in Transparent
 mode resets the pin "when the fault has been cleared"; the same section says the
-Conversion Ready Flag (CVRF, bit 3) clears under exactly two conditions —
-writing the Configuration Register, or **reading the Mask/Enable Register**.
+Conversion Ready Flag (CVRF, bit 3) clears under exactly two conditions: writing the Configuration Register, or **reading the Mask/Enable Register**.
 For the CNVR alert function those two statements point in different directions,
 and the design depends on which governs.
 
@@ -543,7 +541,7 @@ and **every conversion after the first is untimestamped while the stream still
 looks well-formed**. The remedy is a Mask/Enable read per conversion, which
 breaks pointer retention as well as adding a transaction: roughly 96 clocks,
 240 µs at 400 kHz against a 140 µs conversion, which fails outright and forces
-high-speed mode at 2.94 MHz (~33 µs, 23 %) — the fallback the timing budget
+high-speed mode at 2.94 MHz (~33 µs, 23 %), the fallback the timing budget
 already names.
 
 This is the cheapest thing on this list to test and the most expensive to
@@ -552,7 +550,7 @@ is what the PCB is laid out around. It is caught by the `rate` gate. Its
 prediction should be written into the issue **before** that gate runs: the
 optimistic reading gives 7,143 edges/s, the pessimistic reading gives *one*.
 
-**O2 — The wire protocol and its transport (4.3).** Record format cannot satisfy
+**O2. The wire protocol and its transport (4.3).** Record format cannot satisfy
 the `wrap` gate as priced, and the USB CDC transport is unwritten, unpriced, and
 constrained by the bare-metal ADR to be hand-written. Blocks `stream`, and
 `stream` blocks every Tier 1 gate that reads a capture.
@@ -567,8 +565,8 @@ That file's exit criterion once cited §4 for pin allocation and
 could not close without a document nobody had written; issue #2 split the
 dependency, on the grounds that a code table is not made correct by a pin map and
 that holding a finished table open behind an unwritten one reports a closed
-decision as open. The phase-code pins are now proposed on `PA2`–`PA7`.
-Section 6.3 above states the constraints; the draft `PA0`–`PA5` (whose `PA0`/`PA1`
+decision as open. The phase-code pins are now proposed on `PA2`-`PA7`.
+Section 6.3 above states the constraints; the draft `PA0`-`PA5` (whose `PA0`/`PA1`
 reused the pin numbers the CNVR lines claim on EXTI0/EXTI1) was shifted up two to
 satisfy them, and what remains for the whole map is the pin-assignment ADR's primary-source datasheet check. One constraint is now tighter
 than when 6.3 was written: under the
@@ -599,17 +597,17 @@ The consequence is priced in `todos/stage0_todo.md`: VSSOP-10 is 0.5 mm pitch an
 cannot be breadboarded, so Tier 1 and Tier 2 need a hand-assembled sensor carrier
 holding the same Kelvin sense requirement as the fabricated board.
 
-**O5 — Periodic bus-voltage conversion is not free.** The design monitors the
+**O5. Periodic bus-voltage conversion is not free.** The design monitors the
 supply assumption with roughly one bus conversion in a hundred, costed as one
 percent of the conversion budget. But switching between shunt-only and
 shunt-and-bus is a Configuration Register write, and SBOS547B §7.1.1 states that
 writing the Configuration Register **halts any conversion in progress** and
 restarts on completion, and clears CVRF. So the true cost is a perturbed cadence
 plus a cleared ready flag at every switch, not one conversion slot. The `supply`
-gate should be stated against that, and the alternative — a third INA226 on the
-supply, or a periodic dedicated window — costed before the board is laid out.
+gate should be stated against that, and the alternative, a third INA226 on the
+supply or a periodic dedicated window, costed before the board is laid out.
 
-**O6 — ESP-IDF and toolchain pins are open.** `.mise.toml` names ESP-IDF v5.x
+**O6. ESP-IDF and toolchain pins are open.** `.mise.toml` names ESP-IDF v5.x
 with no patch level, and `arm-none-eabi-gcc` is unpinned because it is not
 installed on this machine. The file is candid that pinning an unrun toolchain
 would record a claim about something that has never run. Both close at first
@@ -639,7 +637,7 @@ destroys the evidence that the project once believed otherwise.
 
 ## 8. Risks
 
-**R1 — USB CDC under the bare-metal ADR.** The ADR was written about the
+**R1. USB CDC under the bare-metal ADR.** The ADR was written about the
 jitter-critical path, where its argument is strong: the ISR-to-read boundary must
 be this project's own code. Applied to a USB device stack it is the same rule
 governing code with no bearing on the timebase, at a cost plausibly exceeding the
@@ -649,23 +647,23 @@ UART path the timing budget already priced at 2 Mbaud, or amend the ADR to scope
 cheaper than discovering the cost mid-Tier-1. This should become an ADR before
 `stream.c` is started, not after.
 
-**R2 — The instrument is validated by the same hand that built it.** Named in
+**R2. The instrument is validated by the same hand that built it.** Named in
 the thinkbook and mitigated by construction: Stage 0's references are a precision
-resistor, an independent voltmeter, and the DUT's own clock — standards, not
+resistor, an independent voltmeter, and the DUT's own clock. These are standards, not
 instruments. The question is asked of every gate in writing and answered in
 writing: *what would make this check pass while comparing the wrong quantity?*
 Only the `negctl` gate can detect a physically wrong setup, because a capture
 written from the wrong rail is well-formed.
 
-**R3 — Concentration on one person.** Named in
+**R3. Concentration on one person.** Named in
 `adr/…two-channel-harness-built-in-house.md` as a real exposure, and it is the
 argument for scoping v1 as narrowly as it is scoped.
 
-**R4 — Scope creep from timebase into front end.** Same ADR. Any ranging feature
+**R4. Scope creep from timebase into front end.** Same ADR. Any ranging feature
 arriving before Stage 2 data asks for it is that entry being violated. Likewise,
 ten identical boards are spares; ten variants are thrash.
 
-**R5 — H1 weakening under its own control.** If the `k`-per-wake regression shows
+**R5. H1 weakening under its own control.** If the `k`-per-wake regression shows
 `E_wake` dominating across the whole payload range, H1 is in trouble even with a
 visible sawtooth. That belongs in the predictions ledger rather than a footnote,
 and it is already prediction 2 there.

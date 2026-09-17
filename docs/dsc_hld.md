@@ -1,4 +1,4 @@
-# Direct Semantic Communication: High-Level Design, v1
+# Direct Semantic Communication: high-level design, v1
 
 **Status: Draft.**
 The architecture of the two-node semantic transfer experiment and the
@@ -527,7 +527,7 @@ gate's authority runs out.
 The ordering is the project's own rule: cost of discovering a failure late, which
 is the work a failed gate invalidates behind it.
 
-**O1. Does the Conversion Ready alert actually self-clear in transparent mode?**
+**O1. Does the Conversion Ready alert self-clear in transparent mode?**
 The design halves the edge rate and drops one bus transaction per conversion by
 setting LEN = 0, on the reading that the flag self-clears. SBOS547B does not
 settle this in one place. §7.1.7 says the Alert Latch Enable bit in Transparent

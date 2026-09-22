@@ -27,8 +27,11 @@ Not here. `mise run fab` generates it from the schematic into [`../fab/`](../fab
 as `<project>-bom.csv`. A hand-kept BOM would be a second source for a fact the
 schematic already carries.
 
-## Nothing is committed here yet
+## The project exists on disk, and is not yet committed
 
-Until a `.kicad_pro` appears, `mise run hw` reports exit 2, absent, which is not
-a pass. See [`../README.md`](../README.md), "Order of work", for why fabrication
-is the last thing started.
+The `obol-harness` project appeared here on 2026-09-22 and is under active
+design. Now that a `.kicad_pro` exists, `mise run hw` no longer reports exit 2,
+absent: `erc` is clean and `drc` exits 1 on the empty board outline until the
+layout is drawn. The files are not yet committed. See
+[`../README.md`](../README.md), "Order of work", for why fabrication is still the
+last thing started.

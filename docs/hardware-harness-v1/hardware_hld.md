@@ -15,8 +15,8 @@ What this file adds that none of them holds: the **count of support components**
 protection, indicators), each derived from a declared formula or carried from a
 datasheet with its citation. It is the input to the schematic and the BOM, and
 the precondition for the KiCad project that
-[`../../harness/hardware/README.md`](../../harness/hardware/README.md) says does
-not yet exist.
+[`../../harness/hardware/README.md`](../../harness/hardware/README.md) tracks,
+scaffolded on 2026-09-22 and now under design.
 
 **The single clock is still the architecture.** Every hardware decision below is
 subordinate to one goal from [`../dsc_hld.md`](../dsc_hld.md) §1.1: keep the TIM2

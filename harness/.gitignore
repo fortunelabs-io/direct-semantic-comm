@@ -53,6 +53,9 @@ firmware/dut/*/dependencies.lock
 fp-info-cache
 *.lck
 ~*.*
+# Autosave, transient and never committed: KiCad writes these on unsaved edits.
+_autosave-*
+\#auto_saved_files#
 
 # ERC and DRC reports. Derived from tracked source by a pinned checker, so any
 # commit can regenerate its own; a tracked report would be a number living in

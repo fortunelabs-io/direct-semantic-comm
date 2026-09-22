@@ -1,4 +1,4 @@
-# Harness v1: Signal Inventory and Timing Budget
+# Harness v1: signal inventory and timing budget
 
 *Stage -1 arithmetic for the two-channel metering harness. Every figure here is derived from declared constants: the INA226 datasheet, the I2C specification, and the phase structure in section 4.7 of the thinkbook. Nothing here is measured. The purpose is to fix the capture engine's requirements before any part is ordered.*
 
@@ -21,7 +21,7 @@ Two metered nodes. Each contributes one conversion-ready line from its current s
 
 **Why a 3-bit phase code rather than one toggle line.** Node S passes through sleep, wake, encode, transmit, sleep. Node R passes through sleep, wake, receive, decode or process, sleep. Four states each as counted here, plus room for an armed state and an error state. A single toggle line encodes transitions but not identity, so one missed edge desynchronises every phase after it for the rest of the run, silently. A 3-bit code is self describing: any sample of the bus states which phase the node is in, and a missed transition costs one boundary rather than a run.
 
-**The four-state count above was superseded when the sequence was actually written out.** [`phase_code_map.md`](./phase_code_map.md) closes at **six** states per role: acknowledgement is a phase in both roles rather than R's alone, sleep entry is marked in its own right per the wake-cost ADR, and five states cannot close at Hamming distance 1 because a closed cycle changes every bit an even number of times. The 3-bit conclusion survives intact, and this is the entry worth noting: 3 bits was sized here with four codes spare, and six states plus armed plus error consumes all eight. **The width now has zero headroom.** A seventh phase would need a fourth pin per node, which is a decision rather than an adjustment, and the constraint belongs here where the width was derived.
+**The four-state count above was superseded when the sequence was written out.** [`phase_code_map.md`](./phase_code_map.md) closes at **six** states per role: acknowledgement is a phase in both roles rather than R's alone, sleep entry is marked in its own right per the wake-cost ADR, and five states cannot close at Hamming distance 1 because a closed cycle changes every bit an even number of times. The 3-bit conclusion survives intact, and this is the entry worth noting: 3 bits was sized here with four codes spare, and six states plus armed plus error consumes all eight. **The width now has zero headroom.** A seventh phase would need a fourth pin per node, which is a decision rather than an adjustment, and the constraint belongs here where the width was derived.
 
 Three bits also stays inside the callback discipline. Writing three bits is one masked register write on the DUT, which is the same cost as toggling one, and the send callback runs from a high priority Wi-Fi task where nothing longer is permitted.
 
@@ -80,7 +80,7 @@ The datasheet states that the device retains the register pointer until a write 
 | **Read with pointer retained** | **about 29** | **73 microseconds** | **52 percent** |
 | Read with pointer retained, high speed mode at 2.94 MHz | about 29 | 10 microseconds | 7 percent |
 
-Two channels sharing one bus at 400 kHz with the pointer retained is 104 percent utilisation, which fails. Two independent buses at 400 kHz is 52 percent each, which works with margin for the occasional configuration write.
+Two channels sharing one bus at 400 kHz with the pointer retained is 104 percent utilization, which fails. Two independent buses at 400 kHz is 52 percent each, which works with margin for the occasional configuration write.
 
 **Correction.** Thinkbook 4.7 states that high speed I2C is required and that fast mode drops conversions. That is true for a naive read that rewrites the pointer every time. With pointer retention and one bus per channel, 400 kHz fast mode is sufficient. This matters for part selection: two fast mode I2C masters are universal on mid range microcontrollers, whereas high speed mode support is uneven in both peripherals and drivers. High speed mode is retained as the fallback if measured margin proves worse than this arithmetic.
 
@@ -160,7 +160,7 @@ The STM32 branch is worth noting against the hardware ladder already declared in
 
 **Timestamp at the edge, read at leisure.** The I2C read takes 73 microseconds and its start is subject to scheduling jitter. If the timestamp were taken when the read completes, that latency and its jitter would land directly in the timebase. The conversion ready interrupt must capture the counter and queue the read; the read then happens whenever the bus is free. This decouples the timebase from the bus entirely and is the single most important structural decision in the capture firmware.
 
-**Do not synchronise the two sensors.** The two INA226 parts free run and their conversions will not align. That is fine and should not be fixed. What the two sided ledger requires is a common *time*, not a common *sample instant*, and every record carries its own timestamp from one counter. Attempting to align conversions would add a synchronisation mechanism that buys nothing and can fail silently.
+**Do not synchronize the two sensors.** The two INA226 parts free run and their conversions will not align. That is fine and should not be fixed. What the two sided ledger requires is a common *time*, not a common *sample instant*, and every record carries its own timestamp from one counter. Attempting to align conversions would add a synchronization mechanism that buys nothing and can fail silently.
 
 ---
 
@@ -177,6 +177,6 @@ Thinkbook Stage -1 gains this document as an input to its deliverable table: the
 These were implementation choices, not unanswered questions upstream. **Both are now closed**, by the `choices` bench action in Tier 0 of [`stage0_todo.md`](../../todos/stage0_todo.md), issue #2, on 2026-08-17. Neither outcome changes any figure in this document.
 
 - Whether capture is free running or gated by the phase code. Gated is cheaper on volume and slightly more complex in firmware; either satisfies the budget above. **Closed: free running**, per [`adr/2026-08-17-capture-is-free-running.md`](../adr/2026-08-17-capture-is-free-running.md). The 114 kB/s in §5 is therefore the operating figure and not an upper bound, and the volume note in §5 describes an alternative that was rejected.
-- Whether the phase code is driven by the DUT or derived on the harness from a single strobe plus a serial phase identifier. The 3 bit parallel code assumed here costs three DUT pins; a serialised alternative costs one pin and adds latency that would have to be characterised. Parallel is assumed until pin pressure on the DUT says otherwise. **Closed: parallel**, per [`adr/2026-08-17-phase-code-is-parallel-three-bit.md`](../adr/2026-08-17-phase-code-is-parallel-three-bit.md), on exactly that reasoning. Pin pressure remains the one condition that would reopen it.
+- Whether the phase code is driven by the DUT or derived on the harness from a single strobe plus a serial phase identifier. The 3 bit parallel code assumed here costs three DUT pins; a serialized alternative costs one pin and adds latency that would have to be characterized. Parallel is assumed until pin pressure on the DUT says otherwise. **Closed: parallel**, per [`adr/2026-08-17-phase-code-is-parallel-three-bit.md`](../adr/2026-08-17-phase-code-is-parallel-three-bit.md), on exactly that reasoning. Pin pressure remains the one condition that would reopen it.
 
 The third choice that closed with these two, the bench sensor source, does not appear above because it is a sourcing question rather than an arithmetic one. It is recorded in the specification and in `harness/README.md`. Its one consequence for this document: the sensor is a bare INA226AIDGSR with no inherited shunt, so the 0.1 ohm selected in §6 is fitted rather than confirmed, and §6's table stands unchanged.

@@ -4,9 +4,11 @@
 [`check.py`](./check.py), run identically at the desk and in CI, so that "clean
 locally" and "clean in CI" are one claim rather than two that happen to agree.*
 
-**Status: the pipeline exists, the KiCad project does not.** Every command below
-reports as much today. See [`review_checklist.md`](./review_checklist.md)
-for why fabrication is the last thing started.
+**Status: the pipeline exists, and the KiCad project now exists with it.** The
+`obol-harness` project was scaffolded on 2026-09-22 and the board is under
+design; `mise run hw` no longer exits 2 (absent) but exits 1 on the empty board
+outline until the layout is drawn. See [`review_checklist.md`](./review_checklist.md)
+for why fabrication is still the last thing started.
 
 ---
 
@@ -60,8 +62,9 @@ living in two places. `fab/` **is** tracked; it is what a fabricator receives.
 **Exit 2 is not exit 0, and it fails CI.** A checker that returns success for a
 board that does not exist reports a closed gate on work never done, the same
 failure as an empty test file that exits 0, which
-[`../README.md`](../README.md) refuses for the same reason. Today every command
-here exits 2.
+[`../README.md`](../README.md) refuses for the same reason. The project now
+exists, so no command here returns 2: `erc` is clean and `drc` exits 1 on the
+empty board outline until the layout is drawn.
 
 Exit 3 is separate from exit 1 because "the board is wrong" and "the checker
 could not run" get the same red tick otherwise, and they call for opposite

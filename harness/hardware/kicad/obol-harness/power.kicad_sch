@@ -783,7 +783,7 @@
 	)
 	(rectangle
 		(start 176.53 12.7)
-		(end 284.48 165.1)
+		(end 283.21 165.1)
 		(stroke
 			(width 0)
 			(type default)
@@ -1030,9 +1030,9 @@
 		(uuid "ebad24fe-c127-4d22-a75d-ff5a061fbfd6")
 	)
 	(image
-		(at 201.93 172.72)
-		(scale 0.10767)
-		(uuid "7475740e-988b-494a-854a-f7b890750f94")
+		(at 199.39 172.72)
+		(scale 0.096303)
+		(uuid "2a84d760-d066-4202-b814-5612d337df09")
 		(data "iVBORw0KGgoAAAANSUhEUgAABKQAAAEDCAYAAAALAtwhAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA"
 			"AXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAATfJJ"
 			"REFUeAHt3dFyG9ed7/v/Wg1AGlE+xjzAOYafwPRdKhHH0NXsiZyYujhVtuQqQXf7KiTvZjKSBVna"

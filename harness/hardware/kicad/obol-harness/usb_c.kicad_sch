@@ -1520,7 +1520,7 @@
 	)
 	(text "Sink only, also called UFP. Power in and USB 2.0 device. This\nboard never sources VBUS.\n\nCONSTRAINTS\n\n1. Rd is 5.1k on CC1 and a separate 5.1k on CC2. Never tie CC1 to\n   CC2. Tying them destroys cable orientation detection, and the\n   source will not see a valid sink at all.\n\n2. The A row and the B row of the receptacle carry the same signals\n   so the cable works either way up. A4, A9, B4 and B9 are one node\n   and one wire, not four. The same is true of A1, A12, B1 and B12\n   on ground. In KiCad these pins are stacked at one coordinate and\n   the extra ones are hidden.\n\n3. The ESD array sits between the connector and the 22 ohm series\n   resistors, upstream, so a transient meets the TVS before it\n   meets anything else.\n\n4. The VBUS divider is 10k over 10k, so PA9 sees at most 2.5 V from\n   a 5 V bus, inside the 3.3 V input range.\n\n5. VBUS itself goes to the power sheet. It does not go to the\n   divider midpoint. Wiring the connector VBUS pins to the midpoint\n   would put every milliamp the board draws through a 10k resistor,\n   and would also put raw 5 V on PA9. Both faults pass ERC.\n\n-------------------------------------------------------\n\n仅作受电端 sink，也叫 UFP。只取电和做 USB 2.0 设备。本板永远不对外\n输出 VBUS。\n\n约束\n\n1. CC1 上一个 5.1k Rd，CC2 上另一个独立的 5.1k Rd。绝对不要把 CC1\n   和 CC2 连在一起。连在一起会破坏线缆方向检测，供电端根本认不出这\n   是一个合法的受电端。\n\n2. 母座的 A 排和 B 排承载相同的信号，这样线缆正反插都能用。A4、A9、\n   B4、B9 是同一个节点、同一根线，不是四根。地上的 A1、A12、B1、\n   B12 同理。在 KiCad 里这些引脚叠在同一个坐标上，多出来的几个是隐\n   藏的。\n\n3. ESD 阵列放在接口和 22 欧串联电阻之间，也就是靠前的位置，让瞬态先\n   撞上 TVS，再碰到别的东西。\n\n4. VBUS 分压是 10k 比 10k，因此 5 V 总线到 PA9 上最多 2.5 V，落在\n   3.3 V 的输入范围内。\n\n5. VBUS 本身接到 Power 图页，不接到分压的中点。把接口的 VBUS 引脚接\n   到中点，会让整板的每一毫安都流过一个 10k 电阻，同时把 5 V 原始电\n   压直接送到 PA9 上。这两个错误都能通过 ERC。"
 		(exclude_from_sim no)
-		(at 182.118 88.138 0)
+		(at 181.864 86.36 0)
 		(effects
 			(font
 				(face "Noto Sans CJK HK")
@@ -1850,9 +1850,9 @@
 		(uuid "fb2eed93-3382-4c49-b591-9c3554d7a564")
 	)
 	(image
-		(at 201.93 172.72)
-		(scale 0.10767)
-		(uuid "e12cba52-c748-48bc-8f0c-692ed5e807c4")
+		(at 199.39 172.72)
+		(scale 0.096303)
+		(uuid "6e8ff314-5012-405a-a210-4970c0903838")
 		(data "iVBORw0KGgoAAAANSUhEUgAABKQAAAEDCAYAAAALAtwhAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA"
 			"AXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAATfJJ"
 			"REFUeAHt3dFyG9ed7/v/Wg1AGlE+xjzAOYafwPRdKhHH0NXsiZyYujhVtuQqQXf7KiTvZjKSBVna"

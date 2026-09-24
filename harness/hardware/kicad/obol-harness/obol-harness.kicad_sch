@@ -37,7 +37,7 @@
 	)
 	(text "All parts live in the five sheets.\n\n1. USB-C brings in 5 V. Power drops it to 3.3 V for this board and\n   for both cables. The device under test powers itself.\n2. MCU is a USB device to the host on USB_DM and USB_DP, and reads\n   the 5 V bus through the VBUS_SENSE divider.\n3. Each channel converts its I2C bus to a differential pair, sends\n   it down the JST-PH, and a remote part converts it back at the\n   sensor.\n4. The sensor raises CNVR when a conversion is ready. The MCU\n   timestamps that edge, then fetches the reading over I2C.\n5. Three phase bits per node return on the same cable. The MCU\n   reads all six at the CNVR edge.\n6. IO carries three LEDs, one trigger button, one spare pad.\n\n----------------------------------------------------------------\n\n所有元件都在五个图页里。\n\n1. USB-C 送入 5 V。Power 降到 3.3 V，供本板和两根线缆使用。\n   被测设备自己供电。\n2. MCU 对主机是 USB 设备，走 USB_DM 和 USB_DP，并通过\n   VBUS_SENSE 分压读取 5 V 总线。\n3. 每个通道把自己的 I2C 总线转成差分对，经 JST-PH 送出，\n   远端芯片在传感器侧还原。\n4. 转换完成时传感器拉出 CNVR。MCU 给这个边沿打时间戳，\n   随后通过 I2C 取回读数。\n5. 每个节点三位相位码经同一根线缆返回。MCU 在 CNVR 边沿\n   一次性读取全部六位。\n6. IO 上有三个指示灯、一个触发按键、一个备用焊盘。"
 		(exclude_from_sim yes)
-		(at 178.562 84.582 0)
+		(at 179.324 75.692 0)
 		(effects
 			(font
 				(face "Noto Sans CJK HK")
@@ -401,8 +401,8 @@
 		(uuid "f0d0705a-5935-4240-85f0-60863ef4f832")
 	)
 	(image
-		(at 201.93 172.72)
-		(scale 0.10767)
+		(at 199.39 172.72)
+		(scale 0.096303)
 		(uuid "ac8df956-1bcf-446d-a2ef-c31e59da59cd")
 		(data "iVBORw0KGgoAAAANSUhEUgAABKQAAAEDCAYAAAALAtwhAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA"
 			"AXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAATfJJ"
@@ -1358,21 +1358,21 @@
 		(file
 			(name "sheet.kicad_wks")
 			(type worksheet)
-			(data |KLUv/WC6CI0WALbfZylQtQ4ws87MzAz1OaQkSBCwqH6B+svydzjEyG+oszFqt1QUsoEcM2XMGlsA
+			(data |KLUv/WDHCJ0WALbfZylQtQ4ws87MzAz1OaQkSBCwqH6B+svydzjEyG+oszFqt1QUsoEcM2XMGlsA
 				VgBeAJhjEqm/xJuE/qOeFP0QKO9qXWfQJknjf/BZ2GxWPfRmRmGdz8KWWcerXPoUfgIAEEhNj0s1
 				67ARyyYezxTzjT65scagAmet1W69rtFc2vhEAARKI9RokmUeEQIm0Xbdeqq7efV4PNVqgMBr9GN9
 				u15CU8xi/in8nt+qtl2vmyq1S52fxCneG+uNln969YqNSvT0OD4/v+PQu6lN6CYd89eYRELL69dN
 				jRGaV2v9N/klLNea2R/jUCg4tAQmiPmTpI1+fOOUvGC+i3dZ5dA8UY8jLqj5MCeM4TjMJTZDeFdt
-				xQKGmE8zOrwGKGENtmzzam2XJVzBtT7Rc4xfJgxB1sAX+EnH3lu18WtcuuqTvxSBQqBgEVqXddu9
+				xQKGmE8zOrwGKGENtmzzam2XJVzBtT7Rc4xfJgxB1sAX+EnH3lu18WtcuuqTvxSBQqBgL0Lrsm67
 				tWYdh8iqFgm9yCiCEIbueMty0Z2aXQMOlWTq6U5lY0ncet31uonbdSpNpiS0US+n4l0oloYiInoX
-				8fsiIcdpGYLiVb4J+MiPMp/kZ1dk1X4TERTPz2KAgqABQYWUGRtRkCbJcGBEpMbK5gzFvhLmTla8
-				aSGAXJBGookSlx7gPt9CC1hZgBspGF4AhnAgpTqkgPtB3mFaEmpG2ep23vuYtA+qQZ3u2kPGXOgO
-				emECIWYvX2ufGGcAeliInk5rrJQ1Zi1ptk6mkIKN3BIVHGoKnlzgKWIgIzAtQRw0XWm1Q3EQrLK+
-				FCEs9xVPChCvNWuBsjH/Q5D6pEumsUnLF5H8zCu2fURvMGJoj455Cj8CEiMTedQ+EfJhgVNmTPvm
-				npaUQBo/id5EEsUfTjr/muCGdcayhaMsM4BAkU0U6I4SaDWxIcaBiLiH0ApOvFIQuOYZNydxj1+s
-				6SsB5qidLn6kJDtx2y+2bbgS/EHqHd+x2a/1k7VGxhfFFe9/oUfE7zg6QOoBpgo=|
+				8fsiIcdpGYLiVb4J+MiPMp/kZ1dk1X4TERTPz2KAg6DxQIWYGRtRkCbJcGBEpMbK5gzSPhNWpOoc
+				SBIAdpDGTpEnf7ubHsh9voAWiLLwNlIwvAAM4UBKdZAC4Id5B2lJuBnlq9u79yHSPqIGdbprDxlz
+				oTvolQkEmb18rX1inAHo4UP0Oq21UlactYTZmkwBCnZyS1RwqCl4coG3iIGLwLQEcdB0pdUuxYGw
+				yvpShLDcVzwxQLzArAXKxuyPQOqLLpnFJq1eRPIzr9j2Fb3CiKE9OuYp/AhIgEzk0fpCqIcFTpkx
+				6Yt7WEICOfwkeZNJNH856exrghvG2csqHGWAAQSKbKJAd5RAqykbAhyIxb2HVnDipQLBNc+4OYk7
+				/HpNXwkwR+108SMl2YnbvthiwzXgD1Lvdkdsv9BP7hoZXxRXvP9Vj5Df0XWA1ANMFQ==|
 			)
-			(checksum "9DCE88B7272FFE29E3A3B22668DB9F1E")
+			(checksum "391160A184A767365E4ED3B4D2153C54")
 		)
 	)
 )

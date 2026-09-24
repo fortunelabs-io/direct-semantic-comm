@@ -213,20 +213,28 @@ over a short JST-PH lead is < 1 % of 3.3 V and is neglected; noted, not counted.
 Method: one 100 nF close-in capacitor per supply pin, plus one bulk reservoir per
 ST's power-supply scheme, plus the two mandatory analog/core nets the part
 requires. The pin count and VCAP presence are now **confirmed against DocID026289
-Rev 7, Table 8** (§12 item 1 cleared): two VDD pins (24, 36), VCAP_1 bonded (pin 22).
+Rev 7, Table 8** (§12 item 1 cleared): three VDD pins (24, 36, 48), three VSS pins
+(23, 35, 47) plus the exposed pad, VSSA bonded (pin 8), VCAP_1 bonded (pin 22).
 
 | Net | Rule | Count | Provenance |
 |---|---|---:|---|
-| VDD (pins 24, 36) | 1× 100 nF per VDD pin | 2× 100 nF | confirmed, DocID026289 Rev 7 Table 8 |
+| VDD (pins 24, 36, 48) | 1× 100 nF per VDD pin | 3× 100 nF | confirmed, DocID026289 Rev 7 Table 8 |
 | VDD bulk | 1× 4.7 µF reservoir near package | 1× 4.7 µF | `BORROWED` ST AN4488 / power scheme |
 | VDDA/VREF+ (pin 9, merged on 48-pin) | ferrite bead from VDD, then 1 µF + 10 nF at the pin | 1 ferrite + 1 µF + 10 nF | confirmed pin, DocID026289 Rev 7 Table 8; no ADC, so filter not regulate |
 | VBAT (pin 1) | 1× 100 nF (VBAT tied to VDD) | 1× 100 nF | confirmed, DocID026289 Rev 7 Table 8 |
 | VCAP_1 (pin 22, internal core LDO) | 1× 2.2 µF low-ESR ceramic | 1× 2.2 µF | confirmed present (VCAP_2 absent), DocID026289 Rev 7 Table 8 |
 | NRST (pin 7) | 1× 100 nF to GND | 1× 100 nF | [`harness_spec.md`](./harness_spec.md) §1 |
+| VSS (23, 35, 47) + exposed pad, VSSA (8) | tie to GND; no component | 0 | confirmed, DocID026289 Rev 7 Table 8 |
 
-**Count (confirmed): 100 nF ×4** (VDD ×2, VBAT, NRST), 4.7 µF ×1, 1 µF ×1,
+**Count (confirmed): 100 nF ×5** (VDD ×3, VBAT, NRST), 4.7 µF ×1, 1 µF ×1,
 10 nF ×1, 2.2 µF ×1 (VCAP_1), ferrite bead ×1. Bound against DocID026289 Rev 7
 Table 8; not yet measured on hardware.
+
+**Correction, 2026-09-22.** This section read "two VDD pins (24, 36)" and counted
+100 nF ×4 until the STM32 block was drawn. Table 8 bonds a **third VDD at pin 48**,
+so the close-in count is five, not four. The error reached §11 and §14.2 and is
+corrected in both. It was caught by placing the part in KiCad, which is the check
+a datasheet reading does not replace.
 
 ---
 
@@ -401,7 +409,7 @@ is `MEASURED`.
 | Block | Actives | Passives (count) |
 |---|---|---|
 | §4 Power | 1 LDO | 3 caps (C_in, C_out, VBUS bulk) |
-| §5 MCU decoupling | - | 100 nF ×4, 4.7 µF ×1, 1 µF ×1, 10 nF ×1, 2.2 µF ×1 (VCAP_1), ferrite ×1 |
+| §5 MCU decoupling | - | 100 nF ×5, 4.7 µF ×1, 1 µF ×1, 10 nF ×1, 2.2 µF ×1 (VCAP_1), ferrite ×1 |
 | §6 Crystal | 1 crystal | 2 load caps (+1 DNP R) |
 | §7 USB-C | 1 receptacle, 1 ESD array | 5.1 kΩ ×2, 22 Ω ×2, divider ×2 (+optional PTC) |
 | §8.1 I²C pull-ups | - | 2.2 kΩ ×4 |
@@ -416,8 +424,8 @@ is `MEASURED`.
 
 **Passive total (expected case):** resistors ≈ 4 (I²C) + 2 (CC) + 2 (VBUS
 divider) + 3 (LED) + 1 (trigger) + 3 (SWD/boot) + 2 (CNVR) + 8 (series) = **~25
-resistors**; capacitors ≈ 3 (power) + 8 (MCU decoupling) + 2 (crystal) + 2
-(PCA9615) = **~15 capacitors**; plus 1 ferrite. Termination passives (§9) and
+resistors**; capacitors ≈ 3 (power) + 9 (MCU decoupling) + 2 (crystal) + 2
+(PCA9615) = **~16 capacitors**; plus 1 ferrite. Termination passives (§9) and
 optional TVS/PTC are added once §12 and the review walk settle them.
 
 **Not on this board (companion remote sense board, listed so the count is not
@@ -437,8 +445,10 @@ Status as of 2026-09-13 (primary sources read directly this session where marked
 **CLEARED**):
 
 1. **STM32F411 UFQFPN48 power pins. CLEARED** (DocID026289 Rev 7, Table 8): VDD at
-   pins 24 and 36 (two), VCAP_1 bonded at pin 22 (VCAP_2 absent), VBAT pin 1,
-   VDDA/VREF+ merged at pin 9. §5 counts are bound.
+   pins 24, 36 and 48 (three), VSS at 23, 35 and 47 plus the exposed pad, VSSA at
+   pin 8, VCAP_1 bonded at pin 22 (VCAP_2 absent), VBAT pin 1, VDDA/VREF+ merged at
+   pin 9. §5 counts are bound. Re-read 2026-09-22: the earlier entry recorded two
+   VDD pins and missed pin 48, which is the correction noted in §5.
 2. **HSI and HSE tolerances. PARTIAL.** PLL VCO ranges are primary-cited in
    [`../dsc_hld.md`](../dsc_hld.md) §6.1 (Table 41) and `PLLM=4 / PLLN=96` sits
    inside them; HSI ±1 % and the absence of HSI48/CRS are standard and
@@ -536,7 +546,7 @@ the gain gate onward per
 
 | Function (section) | Value | Qty |
 |---|---|---:|
-| MCU decoupling, 0402 X7R 16 V (§5) | 100 nF | 4 |
+| MCU decoupling, 0402 X7R 16 V (§5) | 100 nF | 5 |
 | VDD bulk (§5) | 4.7 µF 0805 X5R | 1 |
 | VDDA filter (§5) | 1 µF + 10 nF | 1 + 1 |
 | VCAP_1 (§5) | 2.2 µF 0603 X5R | 1 |

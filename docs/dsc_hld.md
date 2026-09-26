@@ -54,7 +54,7 @@ engine is the highest cost-of-failure software in the project. That asymmetry is
 why the majority of this document is about the instrument.
 
 **v1 scope.** Stages -1 through 2 (H1 and the fragmentation curve). The encoder,
-decoder, projector and their training regime (Stages 3 and 5) are named in the
+decoder, projector and their training regime (Stages 3, 3b, and 5) are named in the
 decomposition so the interfaces are reserved, and are not designed here.
 
 ### 1.1 System context
@@ -135,6 +135,14 @@ down. A row with no source is an invention and does not belong in the system.
 | 3-bit Gray-coded phase bus per node | A single toggle desynchronizes a whole run on one missed edge | timing budget §1; `phase_code_map.md` |
 | Timestamp at the edge, read at leisure | The 73 µs read and its jitter would land in the timebase | timing budget §8 |
 | Sensors free-run, never synchronized | The ledger needs a common *time*, not a common *sample instant* | same |
+| Configuration binds at build time, one image per configuration | On a fixed-condition bench a runtime chooser adds cost and no saving | `adr/2026-09-26-configuration-binds-at-build-time.md` |
+| Partition decision returns three verdicts and records the candidate table | A boolean verdict merges a quality loss with a cost loss | `adr/2026-09-26-partition-decision-returns-three-verdicts.md` |
+| Encoder toolchain is ESP-DL v3 with ESP-PPQ | Documented host and board alignment for `Q`, and one exponent at the cut | `adr/2026-09-26-encoder-toolchain-is-esp-dl.md` |
+| ESCP payload bit packing and requantization | Both nodes and the host share one integer arithmetic for every `b` | `adr/2026-09-26-escp-payload-bit-packing.md` |
+| Search space is bottleneck width and bit-width, cut fixed at the bottleneck | A layer search tends toward sending the decision, and a width can sit on either side of a frame boundary | `adr/2026-09-26-search-space-is-bottleneck-width-and-bit-width.md` |
+| ESCP header, one byte per frame and six bytes per message | The frame byte moves every tooth, and the 802.11 FCS covers no path inside a node | `adr/2026-09-26-escp-header-layout.md` |
+| The width sweep is Stage 3b, after a host-only quality frontier | The quality half of `Φ` needs no hardware, and the contract point stays the first result | `adr/2026-09-26-width-sweep-is-stage-3b.md` |
+| Condition A runs the same network whole on R | Path A and path B then differ only in placement and in what crosses the link | `adr/2026-09-26-condition-a-runs-the-same-network-whole-on-r.md` |
 
 ---
 
@@ -147,11 +155,11 @@ Per thinkbook §3.4: each component does one thing, and components communicate t
 | Component | Runs on | Does | Explicitly does not |
 |---|---|---|---|
 | `payload_gen` | S | Produce a payload of commanded **observation** size and content class | Know about frames |
-| `encoder` (B only) | S | int8 autoencoder bottleneck, width 64 | Exist in Condition A images |
-| `fragmenter` | S and R | Chunk to `L`, one sequence byte, reassemble | Allocate dynamically |
+| `encoder` (B only) | S | int8 autoencoder bottleneck, width `w`, 64 at the contract point | Exist in Condition A images. `processor` carries its weights on R (O11) |
+| `fragmenter` | S and R | Chunk to `L − 1` behind one frame byte, carry the six-byte message header, reassemble, check the CRC16 (4.5) | Allocate dynamically |
 | `phase_marker` | S and R | **One masked register write.** Nothing else | Compute, log, or branch |
-| `processor` (A only) | R | Full processing of raw data | Exist in Condition B images |
-| `decoder` (B only) | R | Consume the latent for the task | Exist in Condition A images |
+| `processor` (A only) | R | Run the reference network, encoder and decoder whole, on the raw window (O11) | Exist in Condition B images |
+| `decoder` (B only) | R | Consume the latent for the task | Exist in Condition A images. `processor` carries its weights there (O11) |
 | `projector` (Stage 5) | R | Bridge frozen Encoder_S to frozen Decoder_R | Exist before Stage 3 is trusted |
 
 `payload_gen` takes an observation size rather than a payload size. That is not
@@ -198,8 +206,12 @@ prompts is a test whose result depends on who ran it.
 
 ## 4. Interfaces
 
-An interface is where this design can be got wrong by two people who each read
-their own side correctly. There are four.
+An interface fails in a way neither side can see. Each component meets its own
+specification, the pair does not, and the failure tends to arrive as plausible
+data. A floating `b2` fabricates a believable phase (4.2), a timestamp wrap that
+reaches the host unhandled yields believable times (4.3), and a header that
+differs between conditions reads as a semantic effect (4.5). Each section below
+therefore states its boundary from both sides.
 
 ### 4.1 Capture engine ↔ INA226 (I²C)
 
@@ -354,6 +366,218 @@ against the bare-metal ADR before the USB path is started. See risk R1.
 `FINDINGS.md` as the only place a figure is quoted with the file it was read
 from. Tests are silent on success and exit 0. Every number in a claim is read
 from a named file; nothing is recalled and nothing is retyped.
+
+### 4.5 Node S ↔ Node R over ESP-NOW (the ESCP frame)
+
+The four interfaces above are all instrument-tier. This one is the experiment
+tier's only wire, and Stage 2 depends on it directly, since the fragmentation
+curve is a curve in `n(p)` and `n(p)` is set by what each frame carries besides
+payload. Before `adr/2026-09-26-escp-header-layout.md` the record held two lines on it.
+The fragmenter row of 3.1 said "one sequence byte", and
+`contracts/stage_minus1_contract.md` Q1 priced the latent at 64 bytes plus that
+byte, 65 in all. The header ADR prices it at 71.
+
+**Two header classes.** A per-frame header of `h_frag` bytes rides every frame.
+A per-message header of `h_msg` bytes rides once per message, a prefix in the
+first frame and a CRC16 at the end.
+The split is load-bearing for H1, because `h_frag` shrinks the usable frame and
+so moves every tooth of the sawtooth.
+
+$$
+n(p) = \left\lceil \frac{p + h_{\mathrm{msg}}}{L - h_{\mathrm{frag}}} \right\rceil,
+\qquad
+p_{\mathrm{wire}} = p + h_{\mathrm{msg}} + n(p)\,h_{\mathrm{frag}}
+$$
+
+With `h_msg = h_frag = 0` this reduces to the contract's `⌈p/L⌉`. The `k`-th
+tooth sits at `p = k(L − h_frag) − h_msg`. The header ADR sets `h_frag = 1` and
+`h_msg = 6`. For the raw IMU window at 1,200 B/s the first tooth moves from
+`W = 250/1200 ≈ 0.208 s` to `W = 243/1200 = 0.2025 s` under v1.0, and from
+`W = 1470/1200 = 1.225 s` to `W = 1463/1200 ≈ 1.219 s` under v2.0. The sweep
+starts at 0.25 s, and the frame counts of the IMU rows of contract Q1 do not
+change. The 96 × 96 image row moves from 37 to 38 frames under v1.0. The
+contract's threshold table and thinkbook §4.1 restate `n(p)` from the header
+ADR (O9). The constants in `link_constants.json` are fitted against `p_wire`, the
+form line 15 of Algorithm 1 prices with, so no header byte is counted twice.
+
+**Candidate layouts.** Layout (i′), the last row, is the decision.
+
+| Layout | `h_frag` | `h_msg` | Fields | Cost |
+|---|---|---|---|---|
+| (i) One byte per frame | 1 | 2 | Frame byte holds fragment index (5 bits), last-fragment flag (1), message parity (2). Message bytes hold version and type (4 + 4 bits) and config ID (8) | Keeps the one-byte-per-frame budget the contract priced. 32 fragments cover windows to 6.6 s at `L` = 250. Message identity relies on stop-and-wait under the app-layer ACK |
+| (ii) Two bytes per frame | 2 | 2 | Frame bytes hold message sequence (8), fragment index (7), last-fragment flag (1). Message bytes as in (i) | A 256-message sequence joins S and R logs with no reliance on ACK discipline. One extra byte per frame, on both conditions |
+| (iii) Seven bytes per frame | 7 | 0 | Magic (8), `j` (8), `b` (8), sequence (16), CRC16 (16) | Carries no fragment index, so it cannot reassemble a multi-frame message. `j` and `b` are fixed per image under 4.6. CRC16 duplicates the 802.11 FCS |
+| (i′) One byte per frame, six per message | 1 | 6 | Frame byte as in (i). Message prefix holds version and type (4 + 4 bits), config ID (8), and sequence (16, little-endian). A CRC16 over prefix and body closes the message | Seven header bytes on a one-frame message and one more per extra frame. The sequence joins S and R logs and drops duplicates. The CRC16 checks reassembly and the path inside each node, which the 802.11 FCS does not cover |
+
+**Decision. Layout (i′)**, per `adr/2026-09-26-escp-header-layout.md`. It keeps the
+frame byte of layout (i) and adds a 16-bit sequence number and one CRC16 per
+message. The contract latent is `64 + 6 + 1 = 71` wire bytes in one frame. The
+layout is the same under both ESP-NOW versions and in both conditions.
+
+| Field | Bits | Where | Content |
+|---|---|---|---|
+| Fragment index | 5 | Frame byte, bits 0 to 4, every frame | 0 to 31, so a message holds at most 32 frames |
+| Last-fragment flag | 1 | Frame byte, bit 5 | Set on the last frame of a message |
+| Message parity | 2 | Frame byte, bits 6 and 7 | The two low bits of the sequence number |
+| Version | 4 | Prefix byte 0, bits 0 to 3 | 1. The value 0 is invalid |
+| Type | 4 | Prefix byte 0, bits 4 to 7 | 1 raw, 2 latent, 3 ACK. The value 0 is invalid |
+| Config ID | 8 | Prefix byte 1 | From `arm_config.h` |
+| Sequence | 16 | Prefix bytes 2 and 3, little-endian | Incremented by S once per message |
+| CRC16 | 16 | Last two bytes of the message, little-endian | `esp_rom_crc16_le`, polynomial 0x1021, over prefix and body |
+
+The fragmenter cuts the string of prefix, body, and CRC16 into pieces of at most
+`L − 1` bytes, one per frame, so the CRC16 lands in the last frame or straddles
+the last two. Under v1.0 the 32-frame cap is a body of 7,962 bytes, an IMU window
+of 6.635 s, and the generator of `arm_config.h` refuses an arm above it.
+
+**Receive rules.** R reassembles by fragment index. R ends a message as
+incomplete if an index is missing or the parity changes before the last-fragment
+flag, and checks the CRC16 after the last fragment. A message that ends
+incomplete, fails the CRC16, or repeats the last accepted sequence number gets no
+ACK. R logs it with its reason, and the sample is excluded from `Q` as a loss,
+per thinkbook §4.6. A CRC16 failure is also a finding, since the FCS passed for
+every frame of that message, and it is investigated before any result that
+depends on the capture. A version or config ID that differs from R's own drives
+R to error code `111`.
+
+**Fields left out, and why.**
+
+- **No CRC per frame, one CRC16 per message.** Every ESP-NOW frame carries the
+  802.11 frame check sequence, a CRC-32 the receiving MAC verifies, inside the
+  43-byte framing overhead the contract declares. A frame that fails it never
+  reaches the receive callback, so a CRC per frame repeats that check. The FCS
+  covers the air and no path inside a node. Stone and Partridge found TCP
+  checksum failures in 1 of 1,100 to 1 of 32,000 packets that had passed the
+  link CRC. One CRC16 per message checks reassembly and memory end to end for
+  two bytes, the pattern of the SCHC reassembly check in RFC 8724.
+- **No magic byte.** The version-and-type byte identifies the format and names
+  the message. The sequence number drops duplicates, the role of the 16-bit
+  magic in the Espressif esp-now component. Three types cross this wire, raw
+  data (Condition A), latent data (Condition B), and the app-layer ACK.
+- **No layer ID or bit-width.** Under binding (a) of 4.6, the width `w` and the
+  bit-width `b` are fixed by the image. The config ID replaces both fields and
+  also covers `W` and the model version. A config ID
+  that does not match R's own drives R to error code `111` of 4.2, since a
+  mis-paired S and R image would decode garbage without complaint, the same
+  failure class as the truncation trap in contract Q2.
+
+**The ACK is a message.** One frame, type 3, with an empty body. Its sequence
+field echoes the sequence number of the message it confirms, so
+`h_frag + h_msg = 7` bytes on the wire. It lands in the ledger on both nodes, R
+transmitting and S receiving, and is identical across conditions.
+
+**Parity across conditions.** Condition A and Condition B use this frame format
+byte for byte. A header difference between them lands inside `C_A − C_B` and
+reads as a semantic effect.
+
+**Bit-level rules**, decided in `adr/2026-09-26-escp-payload-bit-packing.md`. They
+do not depend on the header layout.
+
+| Rule | Value | Reason |
+|---|---|---|
+| Byte order, multi-byte fields | Little-endian | Both ends are Xtensa LX7, which is little-endian. Nothing on the link needs network order, and neither side swaps |
+| Bit order within a byte | LSB-first. Element `k` sits at bit `(k·b) mod 8` of byte `⌊k·b/8⌋` | One shift and one mask per element |
+| Permitted `b` | `{2, 4, 8, 16}` | For `b ≤ 8` no element crosses a byte boundary. `b = 16` is a little-endian byte pair. A continuous `b*` from the PM-KVQ bridge is rounded into this set |
+| Signedness | Two's complement, sign-extended on unpack | Matches the symmetric, zero-point-free quantisation of ESP-DL (`adr/2026-09-26-encoder-toolchain-is-esp-dl.md`). The cut is a linear bottleneck (`adr/2026-09-26-search-space-is-bottleneck-width-and-bit-width.md`), so the latent is signed and no cut after ReLU arises |
+| Trailing bits | Zero, in the high bits of the last byte | `⌈w·b/8⌉` already counts them. R reads `w` from `arm_config.h`, so no element count travels |
+| Raw window layout (Condition A) | Sample-major, int16 little-endian, axis order declared in `arm_config.h` | `payload_gen` on S and `processor` on R read one declaration |
+| Unpack | After full reassembly into an aligned static buffer, byte by byte | In a received frame the payload starts at an odd offset under layout (i′). Reassembly strips the headers, and a byte-wise unpack keeps sub-byte and 16-bit elements on one code path |
+| Requantization to `b < 8` | `q_b = clamp((q_8 + 2^(s−1)) >> s)`, arithmetic shift, `s` fixed at calibration and recorded in `arm_config.h` | Equals ESP-PPQ `ROUND_HALF_UP` on ESP32-S3, which is `floor(x + 0.5)`. `b = 8` and `b = 16` are native ESP-DL outputs with no further step |
+| Host evaluation of `Q` for `b < 8` | Through the int8 tensor and the same integer shift | Quantizing the float tensor straight to 4 bits disagrees with the two-step path at about 3 percent of values |
+| Scope in v1 | `b = 8` only | Rules and vectors for 2, 4, and 16 exist from the start, and those values enter with Stage 3b (O10) |
+
+**Test vectors.** A Python reference packer is the source of record for this
+format. `wire_vectors.h` is generated from it (4.6), and the S image, the R
+image, and a host test each reproduce every vector byte for byte. The vectors
+cover every `b`, negative values, ties at the rounding midpoint, saturation at
+both ends of the range, and element counts that leave trailing bits. They also
+cover whole messages with their CRC16, a CRC16 that straddles two frames, and an
+ACK. A packer
+that disagrees with the reference fails a test before it corrupts a capture.
+
+### 4.6 Pre-computed artifacts, and when a configuration binds
+
+This is the build-time interface between host and firmware, and between
+measurement and prediction. Artifacts fall into two families, separated by
+consumer. **Firmware-facing artifacts** are generated C headers, each read at
+build time by one image. **Host-facing artifacts** are JSON, read by the
+partition decision (Algorithm 1, Appendix C) and by the gates. Every artifact in both
+families is produced by a `mise` task from a named source, records the sha256 of
+that source, and opens with a DO NOT EDIT banner. Per 4.4, no value in either
+family is typed by hand.
+
+**Binding (a), static images, is the v1 choice**, per
+`adr/2026-09-26-configuration-binds-at-build-time.md`. `(w, b)` is chosen offline
+and bound at build time, one image per configuration. This extends the ablation-image
+rule of `adr/…terms-identified-by-design-not-by-waveform.md` to the configuration
+axis. An image holds one encoder or one decoder at one width and one bit-width, and a Condition A image
+on S holds no model weights. A Condition A image on R holds the reference network
+of O11. Generated headers carry data only and never select a
+code path, since a header that selects a path is a compile-time flag under
+another name.
+
+The cost of (a) is build and flash discipline. The verdict needs Condition A and
+`(w*, b*)` for each `W`. The cost profile needs one encoder image on S and one
+decoder image on R for each `(W, w)`, since both process a whole window. Packing
+and unpacking are the only parts that depend on `b`, and they are measured by
+repetition, so the count does not grow with `|𝔅|`. This count replaces the one
+stated in the binding ADR, per `adr/2026-09-26-search-space-is-bottleneck-width-and-bit-width.md`. A
+mis-paired S and R image is caught by the config ID of 4.5.
+
+**Binding (b), a policy table, is recorded for a later stage and not designed
+here.** `(w, b)` would be chosen offline for each link condition `c` and bound at
+runtime by lookup, with every partition resident in one image. It pays only when
+the condition changes during a deployment where nobody can reflash, which is the
+factory-floor RF case the positioning points at. It must clear
+
+$$
+\sum_{c} \pi_c \,\bigl( C(x_{\mathrm{static}}, c) - C(x^{*}_{c}, c) \bigr) \;>\; E_{\mathrm{decide}}
+$$
+
+where `π_c` is the fraction of time spent in condition `c`, `x*_c` the best
+configuration for `c`, `x_static` the best single configuration found under (a),
+and `E_decide` the per-event cost of the lookup plus the cost of carrying every
+partition in one image. On the bench there is one condition, the sum is zero,
+and (b) loses by exactly `E_decide`. The baseline `x_static` comes from (a), so
+(a) is a prerequisite of (b). Adopting (b) reopens three closed things.
+
+1. The ablation-image ADR, since one image then holds every partition and both
+   conditions.
+2. The ledger, which gains `E_decide` on S with an ablation image of its own.
+3. The 4.5 header, which gains `w` and `b` or a policy index, since R can no
+   longer read the configuration from its own image.
+
+**`Q` enters firmware only under on-device optimization, which is not pursued.**
+A node in the field carries no INA226, so an on-device estimate of `E_pkt` and
+`e_byte` would rest on a proxy such as RSSI or retry count, and that proxy is a
+model of its own awaiting validation against this harness.
+
+| Artifact | Producer | Consumer | Family | Stage | State |
+|---|---|---|---|---|---|
+| `arm_config.h` | Generator, from the arm declaration | S and R, one per image | Firmware | 2 (`W`), 3 and 3b (`w`, `b`) | Does not exist |
+| `wire_vectors.h` | Python reference packer (4.5) | S and R tests, host test | Firmware | 2 | Does not exist |
+| `link_constants.json` | Probe repos for timing, Stage 1 and 2 gates for energy | Algorithm 1 | Host | 1 to 2 | Does not exist |
+| `width_profile.json` | Harness, one encoder image on S and one decoder image on R for each `(W, w)`, packing measured by repetition | Algorithm 1 | Host | 3, 3b | Does not exist |
+| `quality_table.json` | Host evaluation with the ESP-PPQ executor, several seeds per width | Algorithm 1, and the Stage 3b width filter | Host | Before 3, host only | Does not exist |
+| `model_split_*.h` | ESP-PPQ export from one quantized graph, one model half per image with its cut exponent, and the whole reference network for the Condition A image on R | S and R | Firmware | 3, 3b | Does not exist |
+| `prediction.json` | Algorithm 1 | The gate that measures the arm | Host | Before each run | Does not exist |
+
+**`width_profile.json` records whole-image costs, never per layer.** It holds
+`E_enc(w, b)` and `T_enc(w, b)` on S, `E_use(w, b)` and `T_use(w, b)` on R, and
+`E_proc` and `T_proc` for path A, the reference network run whole on R, at each
+`W`, each with its run count and interval. A single layer of an IMU model on the
+ESP32-S3 is likely shorter than one 140 µs conversion, the boundary blur of
+section 5, and per `adr/…terms-identified-by-design-not-by-waveform.md` a cost is
+identified across runs. Algorithm 1 reads only these totals, so the totals are
+what gets measured. An estimate made before measurement belongs in `prediction.json`,
+labeled as a prediction.
+
+**`quality_table.json` records `Q(A)` and `Q(w, b)` with their provenance.** It
+carries the checkpoint hash for each width and seed, the spread of `Q` across
+seeds, the shift `s` for each `b` below 8, the dataset hash, and the
+quantisation scheme it was evaluated under, since a table evaluated under one scheme says nothing about another. It is
+computed on the host before the first Stage 3 run on the harness, and it decides
+which widths enter Stage 3b (O10). This document carries the schema and never the values, per the source-of-record rule.
 
 ---
 
@@ -614,6 +838,10 @@ would record a claim about something that has never run. Both close at first
 use, and the ESP-IDF pin is what turns the Stage -1 version declaration into
 something enforced rather than asserted.
 
+Two more pins join this item under
+`adr/2026-09-26-encoder-toolchain-is-esp-dl.md`, the ESP-DL version and the
+ESP-PPQ version. They close at the first Stage 3 build, by the same rule.
+
 **O7. Two discrepancies in the record itself. Closed**, 2026-08-17. Both misled a
 reader who landed on one file rather than the set, which is the failure mode this
 section exists to catch, so both are recorded here rather than deleted.
@@ -632,6 +860,60 @@ part ADR declares "Supersedes:" against it and the bare-metal ADR declares
 both successors and names which parts of its body no longer hold. The Decision
 section was not touched, per the rule in `git_sop.md` that an edited decision
 destroys the evidence that the project once believed otherwise.
+
+**O8. The search space. Closed** by
+`adr/2026-09-26-search-space-is-bottleneck-width-and-bit-width.md`, 2026-09-26. The
+first draft of Algorithm 1 searched over the layers `j` of an existing model.
+That draft conflicted with the contract's fixed 64 int8 latent, and it tended
+toward sending the final decision, which is Option 2 of thinkbook §1.1. The cut
+is now fixed at an injected linear bottleneck after temporal pooling, and
+Algorithm 1 searches over `(w, b)`. Contract Q1 keeps its structure, and the
+compression-ratio ADR stays valid, because the latent size does not depend on
+`W`. Two questions this item raised became O10 and O11.
+
+**O9. The header moves the sawtooth. Closed** by
+`adr/2026-09-26-escp-header-layout.md`, 2026-09-26. H1 predicts frame-count steps at
+multiples of the frame limit. With the decided header the steps sit at multiples
+of `L − 1`, offset by 6 (4.5). The first tooth of the raw window moves to 243
+bytes, 0.2025 s, under v1.0 and to 1,463 bytes, about 1.219 s, under v2.0. The IMU
+frame counts of contract Q1 do not change. A prediction recorded against the
+wrong tooth positions fails for a reason unrelated to the hypothesis, so these
+amendments landed on 2026-09-26, before any Stage 2 prediction was written.
+
+1. `contracts/stage_minus1_contract.md` Q1. The latent row reads 71 bytes. The
+   96 × 96 image row reads 38 frames under v1.0, and the range of
+   `n(p_raw) − n(p_lat)` reads 1 to 37. The threshold table reads above 243 B and
+   0.20 s under v1.0, and above 1,463 B and 1.22 s under v2.0. Each amended line
+   points at the header ADR.
+2. Thinkbook §4.1 states `n(p) = ⌈(p + h_msg)/(L − h_frag)⌉` with a pointer to the
+   header ADR, and §4.4 places the jumps at multiples of `L − h_frag`, offset by
+   `h_msg`. Thinkbook §3.4 replaces "one sequence byte" with the frame byte and the
+   message header.
+
+**O10. Where the `(w, b)` sweep sits in the stage order. Closed** by
+`adr/2026-09-26-width-sweep-is-stage-3b.md`, 2026-09-26. Stage 3 tests H_ledger at the
+contract point, `w = 64` and `b = 8`, with `𝒲 = {64}` and `𝔅 = {8}` in Algorithm 1.
+Before the first Stage 3 run on the harness, the host computes
+`quality_table.json` for every width and bit-width. A width enters Stage 3b only
+if some `b` passes line 25 of Algorithm 1 on that frontier. Stage 3b runs after
+Stage 3 passes its gates, and Stages 4 and 5 do not wait for it. If no width
+other than 64 passes, Stage 3b does not run and the frontier is the finding. The
+stage table of thinkbook §5 carries a Stage 3b row since 2026-09-26.
+
+**O11. What R runs in Condition A. Closed** by
+`adr/2026-09-26-condition-a-runs-the-same-network-whole-on-r.md`, 2026-09-26.
+R runs the reference network, the jointly trained encoder and decoder at `w = 64`
+and `b = 8`, whole on the raw window, through Stage 3b. Two predictions enter
+`prediction.json` before the first Stage 3 run. At the contract point the output
+of R under path B equals its output under path A sample for sample, and
+`E_proc − E_enc − E_use` is close to zero. H_ledger at that point therefore
+measures the link saving almost alone. `A_QUALITY` cannot occur in v1, since
+`Q(64, 8)` equals `Q(A)` and `Φ` always holds the contract point. The quality cost
+of the bottleneck itself waits for a later sensitivity arm with a model trained
+on raw data. The decision amends one sentence of the binding ADR, since the
+Condition A image on R now holds model weights. Since 2026-09-26 thinkbook §3
+names the network of Condition A, and thinkbook §7 carries both predictions as 12
+and 13.
 
 ---
 
@@ -687,6 +969,9 @@ it, section 5's acceptance of a 140 µs boundary blur.
 O1 resolving pessimistically, which reopens the bus count and therefore the
 board.
 
+Adoption of binding (b) of 4.6, which reopens the ablation-image ADR, the 4.5
+header, and the ledger by one term.
+
 ---
 
 ## Appendix A: file map
@@ -697,7 +982,7 @@ board.
 | `docs/dsc_hld.md` | This document | Draft |
 | `contracts/stage_minus1_contract.md` | Five questions, answered from declared constants | Closed |
 | `todos/stage0_todo.md` | Gates: claim, command, criterion, prediction | Complete |
-| `docs/adr/` | Fourteen entries; one marked superseded, one superseded but unmarked (O7), one proposed (`2026-09-09-stm32f411-pin-assignment`) | Live |
+| `docs/adr/` | Twenty-five entries; one marked superseded, one superseded in part, one superseded but unmarked (O7), one proposed (`2026-09-09-stm32f411-pin-assignment`) | Live |
 | `docs/hardware-harness-v1/harness_timing_budget.md` | The arithmetic the harness is sized by | Complete |
 | `docs/hardware-harness-v1/phase_code_map.md` | Code-to-phase table, both roles, six states each | **Closed**, proved by `phase` in Tier 2 |
 | `docs/hardware-harness-v1/harness_spec.md` | Pin allocation; I2C/CNVR/timebase and §4 phase-bit pins all recorded | **Exists**; allocation decided, ADR datasheet check pending (O3) |
@@ -711,10 +996,123 @@ board.
 
 | Symbol | Meaning |
 |---|---|
-| `p`, `L`, `n(p)` | Payload bytes; single-frame limit (250 B under v1.0); frame count `⌈p/L⌉` |
+| `p`, `L`, `n(p)` | Payload bytes; single-frame limit (250 B under v1.0); frame count `⌈(p + h_msg)/(L − h_frag)⌉` (4.5) |
 | `E_wake`, `E_pkt`, `e_byte` | Per-event, per-frame, per-byte energy on S; primed forms are R's |
 | `E_enc`, `E_proc`, `E_use`, `E_proj` | Encode on S; full raw processing on R; latent consumption on R; bridge on R |
 | `C_A`, `C_B`, `C_null` | Raw-transfer cost; semantic-transfer cost; empty-event floor |
 | `G` | `(C_A − C_B) / (C_A − C_null)`, the fraction of achievable range recovered |
 | `Q(·)`, `ε` | Task metric on R, and the declared sufficiency tolerance |
 | H1, H_ledger, H_transfer | Packet-count dominance; joint encoder-decoder split; independently trained halves bridged |
+| `w`, `b`, `𝒲`, `𝔅` | Bottleneck width; transmitted bit-width; their candidate sets, with `𝔅` a subset of `{2, 4, 8, 16}` (4.5, Appendix C) |
+| `h_frag`, `h_msg` | Header bytes on every frame, 1; header bytes once per message, 6 (4.5) |
+| Reference network | The jointly trained encoder and decoder at `w = 64` and `b = 8`, run whole on R as path A (O11) |
+| `π_c`, `x*_c`, `x_static`, `E_decide` | Binding (b) terms (4.6). Time fraction in condition `c`; best configuration for `c`; best single configuration; per-event decision cost |
+| TX, RX | Algorithm 1's names for S and R (Appendix C) |
+| `E_ack` | Energy of one app-layer ACK exchange, both nodes (4.5, Appendix C) |
+
+## Appendix C: Algorithm 1, the partition decision
+
+**Source of record for the procedure.** The decision it evaluates, the feasible
+set, the chosen configuration, and the three verdicts, is stated as mathematics
+in thinkbook §4.9, which is the source of record for the math. Where the two
+disagree, the thinkbook wins and this appendix is wrong. The procedure adds what
+the thinkbook leaves open, which is the host inputs, the ACK term, the
+normalization by `W`, the latency cost with the link counted once, and the record
+written to `prediction.json`. Rendered copies
+in English and Simplified Chinese follow this text and never the reverse.
+
+It runs offline on the host under binding (a) of 4.6, reads only host-facing
+artifacts, and writes `prediction.json` before any harness run. Per
+`adr/2026-09-26-search-space-is-bottleneck-width-and-bit-width.md`, the cut is
+fixed at an injected linear bottleneck after temporal pooling, and the search
+runs over the width `w` and the bit-width `b`. Lines 14, 15 and 19 carry the
+header and ACK terms of 4.5, so both conditions are priced with the same framing.
+Path A is the reference network run whole on R, per
+`adr/2026-09-26-condition-a-runs-the-same-network-whole-on-r.md`, so `E_proc`,
+`T_proc`, and `Q(A)` do not depend on the candidate. At Stage 3 the candidate sets
+are `𝒲 = {64}` and `𝔅 = {8}`, per `adr/2026-09-26-width-sweep-is-stage-3b.md`.
+
+```
+Algorithm 1  DSC width-and-quantize decision (both sides metered, offline on host)
+
+ 1: Input
+ 2:   W                       IMU window length (6 axes, 100 Hz), swept parameter
+ 3:   P_raw                   raw window size in bytes
+ 4:   𝒲, 𝔅                    candidate bottleneck widths; candidate bit-widths in {2, 4, 8, 16} (4.5)
+ 5:   L, h_frag, h_msg        max ESP-NOW payload per frame, per-frame and per-message header bytes (4.5)
+ 6:   κ_E^TX, κ_E^RX          link energy constants (wake, frame, byte), measured per side
+ 7:   κ_T                     link time constants (wake, frame, byte)
+ 8:   E_proc, T_proc          measured cost of the full network on RX (path A), at this W
+ 9:   E_enc(w,b), T_enc(w,b)  measured cost of the encoder image (w, b) on TX, at this W
+10:   E_use(w,b), T_use(w,b)  measured cost of the decoder image (w, b) on RX, at this W
+11:   E_ack                   measured energy of one app-layer ACK exchange, both nodes (4.5)
+12:   Q(·), ε                 task quality at RX, Q(A) or Q(w, b), and the degradation tolerance
+13: procedure LINK(p, κ)
+14:   n ← ⌈(p + h_msg) / (L − h_frag)⌉                               ▷ frame count with headers
+15:   return κ_wake + n · κ_frame + (p + h_msg + n · h_frag) · κ_byte   ▷ three-term model
+16: procedure COST(a)                                                  ▷ a is path A or a candidate (w, b)
+17:   if a = A then (p, E_c, T_c) ← (P_raw, E_proc, T_proc)
+18:   else (p, E_c, T_c) ← (⌈w · b / 8⌉, E_enc(w,b) + E_use(w,b), T_enc(w,b) + T_use(w,b))
+19:   E ← E_c + LINK(p, κ_E^TX) + LINK(p, κ_E^RX) + E_ack
+20:   T ← T_c + LINK(p, κ_T)                                           ▷ link counted once, ACK follows the result
+21:   return (E / W, T)                                                ▷ energy per second of sensed data
+22: procedure PARTITIONDECISION
+23:   C_A ← COST(A)
+24:   Φ ← {(w, b, Q(w, b), COST(w, b)) | w ∈ 𝒲, b ∈ 𝔅}               ▷ candidate table, each Q evaluated once
+25:   F ← {(w, b) | (w, b, q, c) ∈ Φ, q ≥ Q(A) − ε}                   ▷ extractor principle
+26:   if F = ∅ then
+27:     (w*, b*, C_B, v) ← (⊥, ⊥, ⊥, A_QUALITY)
+28:   else
+29:     if OptTarget == energy then (w*, b*) ← argmin_{(w,b) ∈ F} COST(w, b).E
+30:     else if OptTarget == latency then (w*, b*) ← argmin_{(w,b) ∈ F} COST(w, b).T
+31:     C_B ← COST(w*, b*)
+32:     if C_B.x < C_A.x then v ← B_WINS else v ← A_COST              ▷ x is E or T, per OptTarget
+33:   record (w*, b*, C_A, C_B, Φ, v) in prediction.json               ▷ before any harness run (4.6)
+34:   return (w*, b*, v)
+```
+
+Symbols in lines 2 to 12 are defined in the input block. The table below covers
+lines 13 to 34, each at the line where it is first used.
+
+| Symbol | Line | Meaning |
+|---|---|---|
+| `LINK(p, κ)` | 13 | Cost of carrying `p` body bytes. Joules with `κ_E`, seconds with `κ_T` |
+| `p`, `κ` | 13 | Body bytes of one message, headers excluded, `P_raw` on path A and `⌈w·b/8⌉` on path B; one constant triple among `κ_E^TX`, `κ_E^RX`, `κ_T` |
+| `n` | 14 | Frame count once both headers are carried (4.5) |
+| `⌈x⌉`, `←` | 14 | Round up to the nearest integer; assignment |
+| `κ_wake` | 15 | Fixed cost per transmission (radio wake), paid once whatever the payload size |
+| `κ_frame` | 15 | Cost per ESP-NOW frame (preamble, MAC header, MAC ACK) |
+| `κ_byte` | 15 | Cost per byte on air, header bytes included |
+| `COST(a)` | 16 | Per-window cost pair `(E/W, T)` of arm `a` |
+| `a` | 16 | The arm being priced, path A or a candidate `(w, b)` |
+| A, B | 16 | Path A sends the raw window. Path B sends the quantized latent of width `w` |
+| `E_c`, `T_c` | 17 | Compute energy and time of the arm, TX and RX together |
+| `w` | 18 | Bottleneck width, the number of latent elements. The cut is fixed at an injected linear bottleneck after temporal pooling |
+| `b` | 18 | Bits per latent element on the wire |
+| `E` | 19 | Energy for one window in joules. Compute, TX radio, RX radio, and the ACK |
+| `T` | 20 | Latency to R's result for one window in seconds. The ACK follows the result and is left out |
+| `E/W` | 21 | Energy per second of sensed data, comparable across `W` |
+| `C_A` | 23 | Cost of path A, `COST(A)` |
+| `Φ` | 24 | Candidate table. Every `(w, b)` with its quality and cost, from which the cost-quality frontier is read |
+| `F` | 25 | Feasible set. Every `(w, b)` whose quality at RX stays within `ε` of path A |
+| `∅` | 26 | The empty set |
+| `(w*, b*)` | 27 | The chosen width and bit-width, both `⊥` when `F` is empty |
+| `C_B` | 27 | Cost of the chosen semantic configuration |
+| `v` | 27 | Verdict, one of `B_WINS`, `A_COST`, `A_QUALITY` |
+| `⊥` | 27 | Undefined, used when no feasible configuration exists |
+| `A_QUALITY` | 27 | No candidate keeps quality within `ε`. The extractor is what needs fixing |
+| `OptTarget` | 29 | Objective to minimize, `energy` or `latency` |
+| `argmin_{(w,b)∈F}` | 29 | Returns the pair in `F` with the smallest cost, never the cost itself |
+| `.E`, `.T` | 29 | Energy or latency component of the pair `COST` returns |
+| `.x` | 32 | The component `OptTarget` names, `E` or `T` |
+| `A_COST` | 32 | Feasible candidates exist and none is cheaper than path A. The link economics, `W`, or the width set is what needs fixing |
+| `B_WINS` | 32 | Path B is cheaper than path A |
+| `record` | 33 | Write the prediction, `Φ` and `v` included, to `prediction.json` before measurement (4.6) |
+
+**Three verdicts**, per `adr/2026-09-26-partition-decision-returns-three-verdicts.md`,
+read with `(w, b)` in place of `(j, b)`. Line 32 compares the component
+`OptTarget` names, since `C_A` and `C_B` are both pairs `(E/W, T)`. The two ways
+path A can win are kept apart because they point at different fixes, the
+extractor for `A_QUALITY` and the link economics, `W`, or the width set for
+`A_COST`. `Φ` goes into `prediction.json` whole, so a reviewer of the gate sees
+how close the losing candidates came.

@@ -22,7 +22,7 @@ This is the only question that can kill the direction, and it decides whether H1
 
 ### Candidate arithmetic
 
-Payload sizes before framing. Latent is a bottleneck of width 64 quantised to int8, giving 64 bytes plus one sequence byte from the fragmenter, so 65 bytes, which is one frame under either ESP-NOW version.
+Payload sizes before framing. Latent is a bottleneck of width 64 quantised to int8, giving 64 bytes. The ESCP header of `adr/2026-09-26-escp-header-layout.md` adds one frame byte and a six-byte message header, so the latent is 71 bytes on the wire, which is one frame under either ESP-NOW version. Frame counts include that header, `n(p) = ⌈(p + 6)/(L − 1)⌉`. Against the header-free count only the 96 x 96 image row changes, from 37 to 38 frames under v1.0, and that row exceeds the 32-frame cap of the header.
 
 | Modality | Observation | Raw bytes | n at L = 250 | n at L = 1470 |
 |---|---|---|---|---|
@@ -35,12 +35,12 @@ Payload sizes before framing. Latent is a bottleneck of width 64 quantised to in
 | | 32 x 32 | 1024 | 5 | 1 |
 | | 64 x 64 | 4096 | 17 | 3 |
 | Image, greyscale, int8 | 32 x 32 | 1024 | 5 | 1 |
-| | 96 x 96 | 9216 | 37 | 7 |
-| Latent, width 64 int8 plus sequence byte | any | 65 | 1 | 1 |
+| | 96 x 96 | 9216 | 38 | 7 |
+| Latent, width 64 int8, ESCP header included | any | 64 body, 71 on the wire | 1 | 1 |
 
 ### Answer
 
-**Yes, for all three candidates under ESP-NOW v1.0.** The packet-count term is non-zero across every listed observation size, and the difference $n(p_{\mathrm{raw}}) - n(p_{\mathrm{lat}})$ ranges from 1 to 36.
+**Yes, for all three candidates under ESP-NOW v1.0.** The packet-count term is non-zero across every listed observation size, and the difference $n(p_{\mathrm{raw}}) - n(p_{\mathrm{lat}})$ ranges from 1 to 37.
 
 **Recommended modality: six-axis IMU at 100 Hz, int16, window length as the swept parameter.** Acquisition current is milliamp-scale rather than tens of milliamps, so it contaminates the ledger least. Window length is a single physically interpretable number, so the Stage 3 sweep is a sweep in seconds of motion rather than in resampling resolution. The encoder for a windowed inertial signal is the smallest of the three. Activity recognition from inertial windows is established practice, so the processing is honestly required rather than chosen for its cost.
 
@@ -48,12 +48,12 @@ Audio is the second choice and is the closest precedent alignment, since the one
 
 ### A threshold that falls out, and matters
 
-There is a minimum observation below which the packet-count argument is void, and it moves with the ESP-NOW version.
+There is a minimum observation below which the packet-count argument is void, and it moves with the ESP-NOW version. The minimums include the ESCP header, which moves the first step from `L` to `L − 7` bytes of raw payload.
 
 | Version | Frame limit | Minimum raw payload | Minimum IMU window at 100 Hz |
 |---|---|---|---|
-| v1.0 | 250 B | above 250 B | above 0.21 s |
-| v2.0 | 1470 B | above 1470 B | above 1.23 s |
+| v1.0 | 250 B | above 243 B | above 0.20 s |
+| v2.0 | 1470 B | above 1463 B | above 1.22 s |
 
 **This makes the version choice derived rather than arbitrary.** Core runs use v1.0, because the packet-count term is then non-zero across the entire intended sweep. v2.0 becomes the Stage 4 control, where its near-zero packet-count term below 1470 bytes is not an inconvenience but the prediction being tested: under v1.0 crossing the limit adds a frame with its own acknowledgement and its own retransmission opportunity, while under v2.0 it adds a vendor-specific element inside one frame at a cost of seven bytes.
 
@@ -115,6 +115,7 @@ Derivation in the harness signal inventory and timing budget.
 | Frame limit, core runs | 250 B, v1.0 | same |
 | Frame limit, Stage 4 control | 1470 B, v2.0 | same |
 | Framing overhead per frame | 43 B | ESP-IDF frame format, confirmed independently by Urazayev et al. |
+| ESCP header | 1 B per frame, 6 B per message | `adr/2026-09-26-escp-header-layout.md` |
 | INA226 shunt full scale | 81.92 mV | INA226 datasheet |
 | INA226 shunt least significant bit | 2.5 microvolts | same |
 | Conversion time, fastest | 140 microseconds | same |
@@ -130,7 +131,7 @@ Derivation in the harness signal inventory and timing budget.
 
 ## What would reopen this
 
-Question 1 reopens if the modality changes, if the latent width grows past the frame limit, or if the core runs move to v2.0, in which case the minimum viable window rises roughly sixfold and the lower half of the intended sweep loses its packet-count term.
+Question 1 reopens if the modality changes, if the latent width grows past the frame limit, or if the core runs move to v2.0, in which case the minimum viable window rises roughly sixfold and the lower half of the intended sweep loses its packet-count term. It also reopens if the ESCP header changes, since the header sets the frame count.
 
 Question 5 reopens if the device under test changes, since the shunt is sized against the ESP32-S3 transmit figure.
 
@@ -141,3 +142,5 @@ Questions 3 and 4 reopen before Stage 5 by design.
 ## Status
 
 **Closed.** All five answered, nothing open. Stage 0 may begin at Phase A.
+
+**Amended 2026-09-26.** Question 1 restates its frame counts and thresholds with the ESCP header of `adr/2026-09-26-escp-header-layout.md`. The answer to Question 1 does not change.

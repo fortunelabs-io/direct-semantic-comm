@@ -112,7 +112,7 @@ H_ledger is tested first, in Stages -1 through 4. H_transfer is tested second, i
 
 One experiment, two conditions, four measured phases, both nodes metered.
 
-**Condition A (raw transfer).** S transmits the raw payload. R receives it and runs the full processing step locally. S pays no encode cost. The link pays for every raw byte, fragmented as needed. R pays full processing.
+**Condition A (raw transfer).** S transmits the raw payload. R receives it and runs the full processing step locally. The full processing step is the Condition B encoder and decoder at the contract point, run whole on R, per `2026-09-26-condition-a-runs-the-same-network-whole-on-r.md`. The two conditions then differ only in where the encoder runs and in what crosses the link. S pays no encode cost. The link pays for every raw byte, fragmented as needed. R pays full processing. At the contract point the compute premium of 4.4 is therefore close to zero, and H_ledger there measures the link saving almost alone. A model trained on raw data for R alone is a later sensitivity arm.
 
 **Condition B (semantic transfer, H_ledger variant).** S runs a small learned encoder over the raw payload and transmits the latent representation. R runs the matching decoder, or consumes the latent directly for the task. S pays encode. The link pays only for the latent. R pays a reduced use cost. Encoder and decoder are trained together as one system and only split at deployment, so there is no representation-alignment problem here by construction.
 
@@ -120,7 +120,7 @@ One experiment, two conditions, four measured phases, both nodes metered.
 
 At the model tier the payload size is not a choice. A KV-cache is a consequence of architecture, of layer count, head count, head dimension, and precision, and cannot be tuned below any threshold. That is why the communication side of the parent build's ledger lost by four to five orders of magnitude with nothing available to do about it.
 
-At this tier the bottleneck width is free. The latent can be sized, quantized, and layer-selected to land wherever the designer puts it, including deliberately just under the frame limit $L$.
+At this tier the bottleneck width is free. The latent can be sized and quantized to land wherever the designer puts it, including deliberately just under the frame limit $L$. The cut is fixed at an injected bottleneck, per `2026-09-26-search-space-is-bottleneck-width-and-bit-width.md`, so the width and the bit-width are the two design variables, and 4.9 states the search over them.
 
 This is not a convenience. It is the premise on which the packet-count argument rests. The sawtooth in energy per byte is only *actionable* because there exists a design variable that can be placed on the cheap side of a discontinuity. Without that freedom the sawtooth would be an observation about a curve; with it, the sawtooth is a design target. Section 4.4 states the win condition in those terms.
 
@@ -145,7 +145,7 @@ Its energy is budgeted by measurement and never by operation count. The closest 
 Unix discipline governs the build. Each firmware and host component does one thing:
 
 - `payload_gen`: produces payloads of a commanded observation size and content class. Nothing else.
-- `fragmenter`: chunks a payload into ESP-NOW frames with one sequence byte, reassembles on the far side. Nothing else. Hand-rolled, so its compute cost is visible and chargeable, not hidden in a vendor component. The sequence byte also carries the application-layer acknowledgement 4.6 requires, since a MAC-layer send success is not an application-layer delivery.
+- `fragmenter`: chunks a payload into ESP-NOW frames with one frame byte on each and a six-byte message header that holds a 16-bit sequence number and a CRC16, then reassembles and checks the message on the far side, per `2026-09-26-escp-header-layout.md`. Nothing else. Hand-rolled, so its compute cost is visible and chargeable, not hidden in a vendor component. The sequence number also carries the application-layer acknowledgement 4.6 requires, since a MAC-layer send success is not an application-layer delivery.
 - `phase_marker`: toggles one GPIO per phase transition. Nothing else. This is not stylistic minimalism. The ESP-NOW send callback runs from a high-priority Wi-Fi task and the vendor documentation states that lengthy operations must not happen there, so the marker must be a bare register write and the analysis must happen on the host.
 - `tx_role` / `rx_role`: two firmware images, one role each. No dual-mode switches. Ablation variants of each, per 4.2, are separate images rather than compile-time flags on one image.
 - `meter_logger` (host side): reads the current trace and the GPIO edges, emits one CSV row per event. Text output, because text composes.
@@ -162,6 +162,12 @@ Components communicate through flat files and serial text. Any single component 
 Let $p$ be payload size in bytes and $L$ the single-frame limit (`ESP_NOW_MAX_DATA_LEN`, 250 B under v1.0; `ESP_NOW_MAX_DATA_LEN_V2`, 1470 B under v2.0). Packet count is a ceiling function:
 
 $$n(p) = \left\lceil \frac{p}{L} \right\rceil$$
+
+That count is header-free. The ESCP header of `2026-09-26-escp-header-layout.md` puts `h_frag = 1` byte on every frame and `h_msg = 6` bytes once per message, so the count and the bytes on the wire become
+
+$$n(p) = \left\lceil \frac{p + h_{\mathrm{msg}}}{L - h_{\mathrm{frag}}} \right\rceil, \qquad p_{\mathrm{wire}} = p + h_{\mathrm{msg}} + n(p)\,h_{\mathrm{frag}}$$
+
+Every byte term in this document reads `p_wire` in place of `p`. The constants are fitted against `p_wire`, so no header byte is counted twice. The first frame boundary sits at `p = L − 7`, 243 bytes under v1.0 and 1,463 bytes under v2.0.
 
 Transmit-side energy is modeled as three terms, not two:
 
@@ -217,15 +223,15 @@ Semantic transfer wins if and only if:
 
 $$E_{\mathrm{enc}} + E_{\mathrm{use}} - E_{\mathrm{proc}} \;<\; \left[ n(p_{\mathrm{raw}}) - n(p_{\mathrm{lat}}) \right]\left( E_{\mathrm{pkt}} + E'_{\mathrm{pkt}} \right) + \left( p_{\mathrm{raw}} - p_{\mathrm{lat}} \right)\left( e_{\mathrm{byte}} + e'_{\mathrm{byte}} \right)$$
 
-The wake terms have canceled. Left side: the net compute premium of the semantic path. Right side: the communication savings, split into a packet-count term and a byte-count term.
+The wake terms have canceled. Left side: the net compute premium of the semantic path. Right side: the communication savings, split into a packet-count term and a byte-count term. Per 4.1 the byte-count term reads `p_wire`. The message-header bytes cancel in that difference, and each frame saved also saves its frame byte.
 
-The central hypothesis, H1, is that on a low-power connectionless radio the packet-count term dominates the byte-count term, so the win condition is governed by whether the latent fits in fewer frames, not merely fewer bytes. Under H1, $E(p)/p$ is sawtooth-shaped: falling within each frame, jumping at each multiple of $L$.
+The central hypothesis, H1, is that on a low-power connectionless radio the packet-count term dominates the byte-count term, so the win condition is governed by whether the latent fits in fewer frames, not merely fewer bytes. Under H1, $E(p)/p$ is sawtooth-shaped: falling within each frame, jumping where $n(p)$ steps, at `p = k(L − h_frag) − h_msg` for each `k`, the first at 243 bytes under v1.0.
 
 H1 is only *actionable* under the premise of 3.1. If $n(p_{\mathrm{raw}}) = n(p_{\mathrm{lat}})$ the packet-count term is identically zero and the entire argument reduces to the byte-count term, which is the weaker claim H1 exists to strengthen. Confirming that the packet-count term is non-zero for the chosen sensor modality and bottleneck width is arithmetic on datasheet constants, costs nothing, and is therefore Stage -1 rather than a discovery.
 
 The two ESP-NOW versions predict different step mechanisms and this is a sharper test than the earlier framing of the same control. Under v1.0, crossing $L$ produces genuinely separate frames, each with its own acknowledgement and its own retransmission opportunity, so the step should be large. Under v2.0, crossing 250 bytes produces an additional vendor-specific element inside one frame, costing seven bytes and no additional acknowledgement, so the step should be small or absent. Observing a large step under both would falsify the account, not confirm it.
 
-H0 is the flat alternative: energy per byte constant or rising in $p$, which would collapse the packet-count argument entirely and must be excluded first.
+H0 is the flat alternative: energy per byte constant or rising in $p$, which would collapse the packet-count argument entirely and must be excluded first. Section 4.9 states the claim over the width search, where this inequality is evaluated once per candidate.
 
 ### 4.5 The null, and what a result is reported against
 
@@ -341,6 +347,40 @@ One structural note carried down from the parent build. If Encoder_S emits a lat
 
 The sufficiency and collapse constraints of 4.6 carry over unchanged in form but are a strictly harder test in practice, since $Q$ is now computed through a decoder that never saw this encoder during its own training.
 
+### 4.9 The width decision
+
+The latent of Condition B is a family of designs. Per `2026-09-26-search-space-is-bottleneck-width-and-bit-width.md`, the cut is fixed at an injected linear bottleneck, and the design variables are its width `w` and the bit-width `b` of each transmitted element, drawn from declared candidate sets `𝒲` and `𝔅`. The inequality of 4.4 then holds or fails once per candidate, and the claim under test is a statement about the cheapest candidate that keeps quality.
+
+At a window length `W`, a candidate `(w, b)` sends a latent of
+
+$$p_{\mathrm{lat}}(w, b) = \left\lceil \frac{w\,b}{8} \right\rceil$$
+
+bytes and costs
+
+$$C_B(w, b) = E_{\mathrm{enc}}(w, b) + E_{\mathrm{tx}}\bigl(p_{\mathrm{lat}}(w, b)\bigr) + E_{\mathrm{rx}}\bigl(p_{\mathrm{lat}}(w, b)\bigr) + E_{\mathrm{use}}(w, b)$$
+
+with $C_A$ as in 4.1. Every term is taken at the same `W`, and the encoder, use, and processing terms depend on `W` because each processes a whole window.
+
+The feasible set keeps the candidates whose quality at R stays within `ε` of Condition A, per 4.6.
+
+$$F = \bigl\{ (w, b) \in \mathcal{W} \times \mathfrak{B} \;\bigm|\; Q(w, b) \geq Q(A) - \varepsilon \bigr\}$$
+
+The chosen configuration is the cheapest feasible candidate.
+
+$$(w^*, b^*) = \operatorname*{arg\,min}_{(w, b) \in F} \; C_B(w, b)$$
+
+The verdict takes one of three values, per `2026-09-26-partition-decision-returns-three-verdicts.md`.
+
+$$v = \begin{cases} \mathrm{A\_QUALITY} & \text{if } F = \varnothing \\ \mathrm{B\_WINS} & \text{if } F \neq \varnothing \text{ and } C_B(w^*, b^*) < C_A \\ \mathrm{A\_COST} & \text{if } F \neq \varnothing \text{ and } C_B(w^*, b^*) \geq C_A \end{cases}$$
+
+The three cases are exhaustive and exclusive. Because `(w*, b*)` minimizes `C_B` over `F`, `B_WINS` holds if and only if the inequality of 4.4 holds for at least one feasible candidate. The two ways Condition A can win point at different fixes. `A_QUALITY` points at the extractor. `A_COST` points at the link economics, the window length, or the width set.
+
+The same decision holds with latency in place of energy. Which of the two it minimizes is declared before the run, together with `ε`.
+
+Stage 3 evaluates the decision with `𝒲 = {64}` and `𝔅 = {8}`, where it reduces to the inequality of 4.4 at one point. Stage 3b evaluates it over the widths that pass the host-only frontier of Section 5. Per `2026-09-26-condition-a-runs-the-same-network-whole-on-r.md`, `Q(64, 8)` equals `Q(A)`, so the contract point is always feasible and `A_QUALITY` cannot occur in the core runs.
+
+The inputs of the decision are measured before the run that adjudicates it. Its value for every candidate, not only the chosen one, is recorded before that run, per Section 7. The procedure that evaluates it, and the files it reads and writes, are specified in the HLD, Appendix C.
+
 ---
 
 ## 5. Proof steps
@@ -358,6 +398,7 @@ That split leaves one exposure worth naming. A phase that produced its own artif
 | 1 | The available range is worth chasing | One cheap run | The direction; Stages 2 onward are then unfunded |
 | 2 | The frame boundary has a step, separable from the wake and retransmission terms | The long sweep | The cost model's structure |
 | 3 | The two-sided ledger favors the latent | Encoder training and deployment | H_ledger |
+| 3b | A width or bit-width other than the contract's lowers the ledger further within `ε` | One training run per width with several seeds, and one image pair per window length and width | The width recommendation only. H_ledger at the contract point stands |
 | 4 | Each model term survives its own control | Repeats of Stage 3 key points | The attribution of any Stage 3 result to a named term |
 | 5 | A bridge can carry a representation across independently trained halves | A second training regime | H_transfer only |
 
@@ -409,11 +450,13 @@ The broadcast-against-unicast pair, at each swept size, separating retransmissio
 
 Report median, P95, P99 per size; the latency distribution is expected heavy-tailed, and under unicast the tail is expected to be governed by retry count rather than by payload size. Deliverable: the sawtooth curve with confidence bands, TX-side and RX-side plotted separately, with $E_{\mathrm{wake}}$ and the retransmission share reported as their own quantities. This is the project's first novel artifact regardless of what comes after.
 
-**Stage 3: the two-sided ledger, swept (H_ledger).** Introduce the jointly trained encoder on S and the matching decoder on R. Run Conditions A and B on identical input sets. Charge every phase to its node, by firmware-variant ablation per 4.2 rather than by intra-event segmentation. Verify the sufficiency, collapse, and delivery checks of 4.6 per sample before admitting any efficiency comparison.
+**Stage 3: the two-sided ledger, swept (H_ledger).** Introduce the jointly trained encoder on S and the matching decoder on R. Stage 3 runs at the contract point, width 64 at int8, and Condition A runs the same network whole on R (Section 3). Run Conditions A and B on identical input sets. Charge every phase to its node, by firmware-variant ablation per 4.2 rather than by intra-event segmentation. Verify the sufficiency, collapse, and delivery checks of 4.6 per sample before admitting any efficiency comparison.
 
 This stage is a sweep, not a point. The two payloads do not scale with the same quantity: $p_{\mathrm{raw}}$ scales with the observation, with sensor resolution and window length, while $p_{\mathrm{lat}}$ is a design constant independent of it. The compression ratio is therefore a free variable, and the sign of the result at any single operating point says nothing about where the ledger turns. Sweep the observation size across at least the range that moves $n(p_{\mathrm{raw}})$ through two frame boundaries.
 
 Deliverable: $C_A$ against $C_B$ with all terms itemized and the decomposition of 4.3 residue-checked, $G$ per 4.5 with confidence intervals, the ablation error budget stated, and the observation size at which the ledger crosses. This stage resolves H_ledger only.
+
+**Stage 3b: the width sweep (H_ledger).** Per `2026-09-26-width-sweep-is-stage-3b.md`. Before the first Stage 3 run on the harness, the host trains each candidate width with several seeds and evaluates `Q` at each bit-width, with no hardware. A width enters Stage 3b only if some bit-width keeps `Q` within `ε` of Condition A on that frontier. Stage 3b then measures the cost of the widths that pass, after Stage 3 passes its gates. Stages 4 and 5 depend on Stage 3 and not on Stage 3b. If no width other than 64 passes, Stage 3b does not run, and the frontier is the finding. A failure here voids the width recommendation only.
 
 **Stage 4: controls (H_ledger).** Repeat key points with and without CCMP encryption; at the default 1 Mbps versus a raised PHY rate, which `esp_now_set_peer_rate_config()` sets per peer; under a varied connectionless Window and Interval, since 4.1 charges R's wake term to them; and under v1.0 framing versus v2.0 framing, which per 4.4 changes the mechanism producing the step and not merely the position of $L$. Each control isolates one term. A model term that survives its control is measured; one that does not is a modeling error found early.
 
@@ -427,9 +470,9 @@ A negative result here, ledger favorable but transfer unusable, or transfer usab
 
 ## 6. Builder knowledge
 
-Three classes. Class A is load-bearing: specifications and peer-reviewed measurements this design directly depends on, plus this project's own validated findings. Class B is methodological: repos and papers whose techniques are adopted or adapted. Class C is contextual: surveys and community writing that orient but never justify a design decision. A claim may cite downward for color, never upward for support.
+Three tiers. The primary tier is load-bearing: specifications and peer-reviewed measurements this design directly depends on, plus this project's own validated findings. The secondary tier is methodological: repos and papers whose techniques are adopted or adapted. The tertiary tier is contextual: surveys and community writing that orient but never justify a design decision. A claim may cite downward for color, never upward for support.
 
-### Class A: primary
+### primary-tier source
 
 | Source | What it anchors |
 |---|---|
@@ -444,7 +487,7 @@ Three classes. Class A is load-bearing: specifications and peer-reviewed measure
 | Parent build, `cache-2-cache-lite`, `FINDINGS.md` | The validated Python-tier result that a representation crosses an independently trained boundary and carries value, under paired statistics with per-sample records. Also the source of three disciplines adopted here verbatim in form: the null before the trained comparison, the decomposition of a total into the part the grader can see and the part it cannot, and the collapse signature that an aggregate cannot detect. Its third open item is this document. |
 | Fu et al., C2C (ICLR 2026), section 3.3.4 | The freeze-both-then-train-only-the-bridge protocol Stage 5 physically mirrors. **Scope note:** this anchors H_transfer as a fair test of C2C's *training protocol*. It is not a test of C2C's medium. C2C never claims its transferred cache is smaller than the alternative; its latency gain comes from avoiding sequential decoding, not from moving fewer bytes. The compression framing is this project's, and it is this project's to defend. |
 
-### Class B: secondary
+### secondary-tier source
 
 | Source | What is taken from it |
 |---|---|
@@ -458,7 +501,7 @@ Three classes. Class A is load-bearing: specifications and peer-reviewed measure
 | TinyML autoencoder deployments on ESP32-S3, e.g. arXiv:2606.02256 | Proof the Condition B encoder is deployable as int8 under TFLite Micro on this chip class; the encoder is adopted practice, not a contribution. |
 | Parent build, `c2c_first_principle.md` | The four-condition derivation Section 1 inherits, and the build-order thesis Section 5 inherits: each condition has its own cheapest falsification, and the build order is the ascending order of those costs. |
 
-### Class C: tertiary
+### tertiary-tier source
 
 | Source | Orientation provided |
 |---|---|
@@ -489,8 +532,12 @@ Recorded before the runs that adjudicate them. Written down afterward, a predict
 | 9 | The step at 250 bytes is large under v1.0 and small or absent under v2.0, since v2.0 adds an element rather than a frame | Stage 4 | pending |
 | 10 | The H_ledger margin is an upper bound on the H_transfer margin | Structural; checked at Stage 5 | pending |
 | 11 | Decoder_R under H_transfer collapses onto a constant output at least once during training, and the aggregate $Q$ fails to flag it while the output-distribution check does | Stage 5 | pending |
+| 12 | At the contract point, the output of R under Condition B equals its output under Condition A, sample for sample. A mismatch is a defect | Stage 3 | pending |
+| 13 | At the contract point, `E_proc − E_enc − E_use` is close to zero, reported as a residue with its interval | Stage 3 | pending |
 
 Prediction 11 is inherited rather than invented. The parent build produced that exact failure twice, under two objectives and two corpora, and each time the aggregate read the collapse as a partial score. It is recorded here so that when it happens it is a confirmation rather than a week spent debugging something that is working correctly.
+
+Predictions 12 and 13 follow from `2026-09-26-condition-a-runs-the-same-network-whole-on-r.md`. Predictions 4 and 9 count ESP-NOW payload bytes. Under the ESCP header of 4.1, the first step sits at a raw body of 243 bytes.
 
 ### Readings that measurement overturned
 
@@ -519,26 +566,3 @@ If H1 holds and Condition B clears the break-even inequality at a recovered frac
 If both hold, the ledger becomes an engineering document at the MCU tier, the same way a validated projection made one at the model tier, and it does so honestly, having paid the extra cost the alignment problem actually demands rather than assuming it away. If either fails, the failure localizes to a named term in a stated model, and the direction dies cheaply, at the stage that could afford to be wrong.
 
 The parent build ended with a threshold it could not adjudicate, because on a machine with no link the second half of the ledger costs nothing and therefore says nothing. This is the tier where the link costs something. Either outcome serves the compass. The point, as before, is not the table. The point is to stop being surprised by the numbers, at both the cheap layer and the hard one.
-
----
-
-## Decisions
-
-Choices made here that are hard to reverse, or that a future read would otherwise have to re-derive, are recorded as dated entries in `adr/`:
-
-| Entry | What it settles |
-|---|---|
-| `2026-08-09-config-contract-precedes-hardware.md` | Stage -1 as a kill gate |
-| `2026-08-09-energy-reported-against-empty-event-null.md` | The null and $G$ |
-| `2026-08-09-wake-cost-separate-from-frame-cost.md` | The three-term cost model |
-| `2026-08-09-receiver-holds-no-local-observation.md` | Why the replacement lesson does not transfer |
-| `2026-08-09-compression-ratio-swept-not-fixed.md` | Stage 3 as a sweep |
-| `2026-08-09-terms-identified-by-design-not-by-waveform.md` | Why instrument bandwidth is not on the critical path |
-| `2026-08-09-ina226-metering-with-stated-blind-spots.md` | Superseded. The meter, the shunt, and what is not measured |
-| `2026-08-09-two-channel-harness-built-in-house.md` | The harness, its scope, and what is deferred |
-| `2026-08-09-capture-engine-is-stm32-part-still-open.md` | Superseded in part. STM32 as the capture-engine family (part and toolchain clauses since superseded) |
-| `2026-08-12-capture-engine-part-is-stm32f411ceu6.md` | The capture-engine part number (STM32F411CEU6) |
-| `2026-08-12-capture-engine-firmware-is-bare-metal.md` | Bare-metal register-level capture firmware, no HAL |
-| `2026-08-17-capture-is-free-running.md` | Free-running capture, trimmed on the host |
-| `2026-08-17-phase-code-is-parallel-three-bit.md` | The phase code as three parallel Gray-ordered bits |
-| `2026-09-09-stm32f411-pin-assignment.md` | Proposed. The capture-engine pin map |

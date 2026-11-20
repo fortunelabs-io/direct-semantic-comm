@@ -1,14 +1,11 @@
 /*
- * timing_budget.h - the capture engine's clock plan, checked at compile
- * time against datasheet limits.
+ * timing_budget.h - the capture engine's clock plan.
  *
- * Every constant here is one of two kinds, and they are kept apart on
- * purpose:
+ * Every constant here is one of two kinds:
  *
- *   LIMIT_*  transcribed from DocID026289 Rev 4 (STM32F411xC/xE), with
- *            the table cited beside it. These are properties of the
- *            silicon. Changing one is a claim about the part.
- *   Chosen   this firmware's clock plan. Changing one is a design choice.
+ *   LIMIT_*  transcribed from DocID026289 Rev 4 (STM32F411xC/xE). These are properties 
+ *            of the silicon.
+ *   Chosen   this firmware's clock plan. Changing them is intentional.
  *
  * The static assertions below compare the second group against the first.
  * That is the only arrangement in which they can fail. An assertion whose
@@ -18,14 +15,14 @@
  * room. Every value on the left of an assertion below is derived from the
  * clock plan; every value on the right came off a datasheet page.
  *
- * Tier 0 is "nothing powered", so none of this is a measurement. It is
- * the arithmetic that Tier 1 will measure against, failing early and at
- * build time if the plan and the part ever disagree.
+ * TODO(Tier 1): measure these on hardware. the static assertions 
+ * just check them against datasheet limits.
+
  */
 #ifndef CAPTURE_ENGINE_TIMING_BUDGET_H
 #define CAPTURE_ENGINE_TIMING_BUDGET_H
 
-/* ---- Limits: DocID026289 Rev 4 ---------------------------------------
+/* ---- Limits as DocID026289 Rev 4 ---------------------------------------
  *
  * Table 41 "Main PLL characteristics", page 87, unless noted otherwise. */
 #define LIMIT_PLL_IN_MIN_HZ    950000UL      /* f_PLL_IN  min  0.95 MHz */
@@ -35,12 +32,7 @@
 #define LIMIT_PLL_OUT_MIN_HZ   24000000UL    /* f_PLL_OUT min    24 MHz */
 #define LIMIT_PLL_OUT_MAX_HZ   100000000UL   /* f_PLL_OUT max   100 MHz */
 
-/* f_PLL48_OUT, Table 41. USB OTG FS is clocked from the PLL Q divider and
- * this is the only rate at which it is in specification. The Tier 0 claim
- * in todos/stage0_todo.md names "USB device" as one of the four
- * requirements the selected part must satisfy, and the Tier 1 `stream`
- * gate is stated against USB CDC, so this is load-bearing and not
- * decorative. */
+/* f_PLL48_OUT, Table 41. USB needs exactly this rate, so keep the check. */
 #define REQUIRED_USB_CLK_HZ    48000000UL
 
 /* Section 2.2, page 13: "The maximum frequency of the two AHB buses is
@@ -58,16 +50,15 @@
 
 /* ---- Chosen: the clock plan -------------------------------------------
  *
- * HSI 16 MHz -> PLL -> 96 MHz SYSCLK, with the PLL Q divider landing on
- * exactly 48 MHz for USB.
+ * HSI 16 MHz -> PLL -> 96 MHz SYSCLK, PLL Q divider gives 48 MHz for USB.
  *
- * 96 MHz rather than the part's 100 MHz maximum, and the reason is USB.
- * SYSCLK = VCO_OUT / PLLP with PLLP in {2,4,6,8}, so a 100 MHz SYSCLK
- * forces VCO_OUT to 200 or 400 MHz (600 and 800 exceed the 432 MHz
- * ceiling). Neither 200/48 nor 400/48 is an integer, so no PLLQ yields a
- * USB clock in specification: on this part 100 MHz SYSCLK and USB are
- * mutually exclusive. A 192 MHz VCO gives up four megahertz and buys back
- * the peripheral the gate's own claim requires. */
+ * 96MHz are decided because USB needs exactly 48 MHz, which
+ * must be VCO_OUT / PLLQ. A 100 MHz SYSCLK forces VCO_OUT to 200 or 400 MHz
+ * (PLLP in {2,4,6,8}, and 600 or 800 exceed the 432 MHz limit). 
+ * 
+ * Neither divides evenly by 48, so 100 MHz SYSCLK and USB cannot both work.
+ * A 192 MHz VCO (192/2 = 96, 192/4 = 48) costs 4 MHz and keeps USB. */
+
 #define HSI_HZ           16000000UL
 #define PLLM             16UL
 #define PLLN             192UL
@@ -109,11 +100,11 @@ _Static_assert(VCO_OUT_HZ % PLLQ == 0 && USB_CLK_HZ == REQUIRED_USB_CLK_HZ,
 
 /* ---- TIM2: the microsecond timebase -----------------------------------
  *
- * When the APB1 prescaler is not 1 the timer kernel clock is twice PCLK1,
- * so TIM2 runs at 96 MHz from a 48 MHz peripheral bus. Table 4 footnote 1
- * confirms APB1 timers reach a 100 MHz TIMxCLK on this part. This assumes
- * TIMPRE = 0 in RCC_DCKCFGR, which is the reset value and is not written
- * by this firmware. */
+ * APB1 = 48 MHz with prescaler /2, so TIM2 gets 2x PCLK1 = 96 MHz (under
+ * the 100 MHz TIMxCLK limit, Table 4 footnote 1). Assumes TIMPRE = 0 in
+ * RCC_DCKCFGR reset value. 
+ * */
+
 #define TIM2_KERNEL_CLK_HZ  (PCLK1_HZ * 2UL)          /* 96 MHz */
 #define TIM2_TARGET_TICK_HZ 1000000UL                 /* 1 us per tick */
 #define TIM2_PSC_VALUE      ((TIM2_KERNEL_CLK_HZ / TIM2_TARGET_TICK_HZ) - 1UL)
@@ -149,17 +140,12 @@ _Static_assert(PCLK1_HZ % 1000000UL == 0,
     "PCLK1 is not a whole number of megahertz, so the CR2 FREQ field "
     "cannot describe it exactly");
 
-/* ---- Margin against the Tier 1 jitter budget --------------------------
+/* ---- Jitter Budget --------------------------
  *
- * The Tier 1 gate ("the timestamp is taken at the edge and not after the
- * read") requires an inter-timestamp standard deviation under 2
- * microseconds. Tier 0 measures nothing; what is checked here is that the
- * timebase itself is not the bottleneck, at a 1:2 sampling margin.
- *
- * TIMER_TICK_US is derived from the clock plan rather than written down,
- * so a future change to PLLN, the APB1 prescaler or the prescaler value
- * that coarsens the tick fails this assertion instead of silently eating
- * the margin the Tier 1 gate is stated against. */
+ * Tier 1 requires timestamp std dev < 2 us. The tick must stay within a
+ * 1:2 margin of that. TIMER_TICK_US is derived from the clock plan, any change that 
+ * makes the tick longer fails the assertion. */
+
 #define JITTER_BUDGET_US     2UL
 #define TIMER_TICK_US        (1000000UL / TIM2_ACTUAL_TICK_HZ)
 

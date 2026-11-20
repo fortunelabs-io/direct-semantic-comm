@@ -1,10 +1,12 @@
 /*
  * timebase.h - the capture engine's clock tree and microsecond counter.
  *
- * Owns everything the timestamp depends on: SYSCLK/PLL bring-up, TIM2 as
+ * Owns the timing dependencies for: SYSCLK/PLL bring-up, TIM2 as
  * a free-running 32-bit microsecond tick, and the DWT cycle counter. Edge
  * capture (conversion-ready interrupt handling) lands here too once Tier
- * 1 starts, per the repository map in todos/stage0_todo.md; it is not
+ * 1 starts, 
+ * 
+ * TODO: per the repository map in todos/stage0_todo.md; it is not
  * written yet, and Tier 0 only needs the tick running and readable.
  */
 #ifndef CAPTURE_ENGINE_TIMEBASE_H

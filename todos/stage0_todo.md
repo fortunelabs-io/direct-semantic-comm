@@ -1,59 +1,48 @@
-# Stage 0 TODO
+# TODO
 
 ## How this file works
 
-Every entry below is a gate, not a task. A gate has one claim, one command, and
-one criterion that can fail. It is closed when its test exits 0 with no output.
+Every entry below is a gate, which is different from an ordinary task. Each gate owns one claim, one command, and
+one finish criterion. Each gate closes when the final test exits 0. (TODO: The test gate is still being figured out.)
 
-Gates are ordered by the cost of discovering a failure late, which is the work a
-failed gate invalidates behind it. Nothing below an open gate gets run.
+Gates are grouped into **tiers**. A tier is a group of gates that share one hardware setup, from Tier 0 (nothing powered) to Tier 3 (the fabricated harness). Tiers run in order, and each tier needs the earlier tiers closed.
 
-There are no time estimates here. A gate is closed or it is not.
+No gate is bounded by a deadline or ETA. This is to make sure that each gate is done properly, with better intention from researchers and developers.
 
-Predictions are written into this file before the run that tests them. A
-prediction added afterward is worth nothing and should be deleted rather than
-backdated.
+// MUST BE: We set the prediction first, before we create the run test and set the pass criterion
 
-**Bench actions are not gates.** Soldering, ordering fabrication, and connecting
-a reference have no command and no criterion of their own. They are listed where
-they fall in the order, and the gate below each one is what proves it was done
-correctly. A solder joint is proved by Tier 3 passing, not by inspecting the
-joint.
+**Bench actions are not gates by definition.** Soldering, ordering fabrication, and connecting
+a reference have no command and no criterion in this repository. They are external activities for building the actual physical system that supports the research. Also, we cannot write a capture or CI check for joining a cable or soldering an MCU.
 
-**What the ladder does and does not enforce.** Each capture script refuses to
+**What the tier order does and does not enforce.** Each capture script refuses to
 start when the file it reads is absent, so the order below is enforced by data
-dependency rather than by a runner or by discipline. That mechanism enforces
-*order* only. Unlike a software ladder, a hardware capture writes a
-well-formed file whether or not the sense resistor was on the correct side of the
-regulator. File existence cannot detect that. Only the negative control in Tier 3
-can, which is why it is a gate and not a check.
+dependency. That mechanism enforces
+*order* only. A hardware capture writes a valid file even if the sense resistor was on the wrong side of the
+regulator. A file check cannot detect that. Only the negative control in Tier 3
+can, which is why it is a gate and not just a check mechanism.
 
 ---
 
 ## Where the results are
 
-`FINDINGS.md` carries what the gates measured, with the file each figure was read
-from named beside it, and it is the document to read for outcomes.
-
-This file is the specification and stays that way. Status is not repeated here. A
-number appearing in both files is a number that will disagree with itself.
+The results belong to `FINDINGS.md`. It records what each gate measured and names the source file beside every figure (read from `results/`). This file defines the gates and the predictions made before each run. It holds no measured results.
 
 ---
 
 ## Precondition
 
-Tier 0 of the Stage -1 configuration contract is closed: all five questions
-answered, nothing open. Modality is a six-axis IMU at 100 Hz int16 with window
-length as the swept parameter, latent width 64 int8, core runs on ESP-NOW v1.0,
-shunt 0.1 ohm on both channels high side. Nothing in this file starts otherwise,
-because Stage -1 costs an afternoon and can kill the direction, and everything
-below is the first substantial expenditure the project makes.
+The Stage -1 configuration contract is closed, and all five questions are answered:
+1. Modality is a six-axis IMU at 100 Hz int16.
+2. Window length is the swept parameter.
+3. Latent width is 64 int8.
+4. The core runs on ESP-NOW v1.0.
+5. The shunt is 0.1 ohm on both channels, high side.
 
 ---
 
 ## Repository map
 
-Entries marked `planned` do not exist yet.
+This is the `planned` repository map.
 
 ```
 harness/
@@ -70,21 +59,7 @@ harness/
 │       ├── commanded_load/              busy loop and square wave
 │       ├── espnow_link/                 unmodified vendor example
 │       └── espnow_link_noradio/         same path, radio never brought up
-├── scripts/                             touch hardware, may prompt, write JSON
-│   ├── capture_rate.py
-│   ├── capture_jitter.py
-│   ├── capture_dropped.py
-│   ├── capture_stream.py
-│   ├── capture_wrap.py
-│   ├── capture_phase.py
-│   ├── capture_link.py
-│   ├── capture_incoming.py
-│   ├── capture_noop.py
-│   ├── capture_negctl.py
-│   ├── capture_gain.py
-│   ├── capture_timing.py
-│   ├── capture_bandwidth.py
-│   └── capture_supply.py
+├── scripts/                             capture_<gate>.py, one per gate: touch hardware, may prompt, write JSON
 ├── tests/                               pure, read JSON, silent on success
 │   └── one per gate below
 ├── hardware/
@@ -98,36 +73,31 @@ harness/
     └── harness_segmented_event.png                                         planned
 ```
 
-Every number that later appears in a claim is read from a named file under
-`results/`. Nothing is recalled, nothing is retyped.
+Every number that appears in a claim is read from a named file under
+`results/`. 
 
-**Capture and test are separate, and the split is not cosmetic.** A capture script
-touches hardware and may prompt for a reference reading typed from a meter. A
-test reads JSON, computes, and exits. A test that prompts is a test whose result
-depends on who ran it.
-
+**Capture and test are separate.** A capture script touches hardware and may prompt for a reference reading typed from the DMM. A test reads JSON, computes, and exits, so anyone can rerun it on the same capture and get the same result.
 ---
 
 ## Toolchain
 
 | Where | What |
 |---|---|
-| Task isolation and tool pinning | mise. The ESP-IDF version pinned here is the one the Stage -1 contract declares, which is what turns that declaration into something enforced |
+| Task isolation and tool pinning | mise. It pins the ESP-IDF version declared in the Stage -1 contract, so that declaration is enforced |
 | Editor | VSCode |
-| DUT firmware | ESP-IDF v5.x, Espressif IDF extension or PlatformIO. ESP32-S3 has native USB-serial-JTAG, no external programmer |
+| DUT firmware | ESP-IDF v5.x, Espressif IDF extension or PlatformIO. ESP32-S3 has native USB-serial-JTAG, so no external programmer is needed |
 | Capture firmware | STM32F411CEU6, bare metal: arm-none-eabi-gcc, CMake, Ninja, st-flash. No CubeMX and no vendor HAL, per `docs/adr/2026-08-12-capture-engine-firmware-is-bare-metal.md` |
 | Host | Python 3, pyserial, numpy, pandas, matplotlib, scipy |
 | PCB | KiCad, JLCPCB for fabrication and optional assembly, LCSC for parts |
-| Bench | DMM with DCV accuracy 0.1 percent or better; 0.1 percent metal film resistors; regulated linear bench supply; low-cost USB logic analyser with PulseView or sigrok |
-| Not required | Oscilloscope. Supply excursion is covered by periodic bus-voltage conversion at 1.25 mV per bit, 0.04 percent of the rail |
+| Bench | DMM with DCV accuracy 0.1 percent or better; 0.1 percent metal film resistors; regulated linear bench supply; low-cost USB logic analyzer with PulseView or sigrok |
+| Not required | Oscilloscope. Supply changes are covered by periodic bus-voltage readings at 1.25 mV per bit, which is 0.04 percent of the rail |
 
-The DMM and the resistors are the traceability standards for the gain and timing
-gates and are the only real instrument purchase. The logic analyser exists only
-for Tier 1, because the capture engine cannot be debugged with itself.
+The DMM and the resistors are the reference standards for the gain and timing
+gates. The logic analyzer is only for Tier 1.
 
 ---
 
-## Tier 0: nothing powered
+## Tier 0
 
 ### The capture engine part satisfies the timing budget
 
@@ -140,25 +110,19 @@ device.
 **Produces.** `results/stage0_toolchain.json`, and the part named in
 `.mise.toml`.
 
-**Passes when.** The clock plan holds against every limit transcribed from the
-part's datasheet, and the two I2C peripherals are recorded from the datasheet
-rather than from a product page, on separate pins with their alternate function
-numbers.
+**Passes when.** The clock plan holds against every limit copied from the
+part's datasheet, and the two I2C peripherals are recorded from the datasheet,
+on separate pins with their alternate function numbers.
 
 **Why this is checkable with nothing powered.** The datasheet limits are
-transcribed into `firmware/capture/timing_budget.h` as constants, and the clock
+copied into `firmware/capture/timing_budget.h` as constants, and the clock
 plan is asserted against them at compile time. The header is integer arithmetic
-with nothing target-specific in it, so the host compiler evaluates the same
-assertions the cross compiler will, and a plan that violates a datasheet limit
-fails to compile. That is a criterion that can fail without a board, which is
-what this tier requires.
-
-**Cost of skipping.** Every layout decision below is drawn against a part that
-may not have the peripherals.
+with nothing target-specific, so the host compiler evaluates the same
+assertions the cross compiler will, and a plan that violates a datasheet constraint would fail to compile. That is a criterion that can fail even without real hardware.
 
 ### The three implementation choices are written down
 
-**Claim.** Free-running or gated capture, parallel or serial phase code, and
+**Claim.** Free-running or triggered capture, parallel or serial phase code, and
 bench sensor source are decided before firmware exists.
 
 **Command.** none, this is a bench action
@@ -168,59 +132,46 @@ record for each of the first two choices, and the Gray sequence written out for
 both roles in `docs/hardware-harness-v1/phase_code_map.md`.
 
 **Decision on record, first.** Capture is free-running, per
-`docs/adr/2026-08-17-capture-is-free-running.md`. A gate that fires wrongly loses
-data silently, and a full stream can always be trimmed on the host while a
-trimmed stream cannot be untrimmed.
+`docs/adr/2026-08-17-capture-is-free-running.md`. A triggered capture that fires
+wrongly loses data without any warning. A full stream can be trimmed on the host
+later, but a trimmed stream cannot be restored.
 
 **Decision on record, second.** The phase code is three parallel bits per node,
-per `docs/adr/2026-08-17-phase-code-is-parallel-three-bit.md`. Serialising adds a
-latency that would itself need characterising and subtracting from every phase
-boundary, which is the one quantity this harness exists to produce.
+per `docs/adr/2026-08-17-phase-code-is-parallel-three-bit.md`. A serial code adds
+a delay that would need to be measured and subtracted from every phase boundary,
+and phase boundaries are the one thing this harness exists to measure.
 
 **Decision on record, third.** The bench sensor is the bare INA226AIDGSR in
-VSSOP-10, LCSC C49851, and no breakout is used at any tier. The shunt is
-therefore a part this project fits rather than a part it inherits, and it is the
-0.1 ohm already fixed by the timing budget and declared in the Stage -1 contract.
+VSSOP-10, LCSC C49851. No breakout is used at any tier. The shunt is 0.1 ohm, fixed
+by the timing budget and the Stage -1 contract. Many breakouts use 0.002 ohm, where
+one count is 1.25 mA. That is 1.3 percent of the 97 mA receive level, which already
+exceeds the 0.5 percent limit of the gain gate.
 
-This is the confirmation the choice asked for, arrived at by removing the
-question rather than by answering it. The trap it was written against is real:
-many INA226 breakouts carry a 0.002 ohm shunt for high-current use, which puts
-the 330 mA transmit peak at 660 microvolts of an 81.92 millivolt span, and puts
-one least significant bit at 1.25 mA. Against the 97 mA receive level that is
-1.3 percent per count from quantisation alone, so such a breakout could not meet
-the 0.5 percent criterion of the `gain` gate below no matter how it was
-calibrated. A bare part has no shunt to confirm, so no product listing is relied
-on for anything.
+**Consequence.** VSSOP-10 cannot be breadboarded, so Tier 1 and Tier 2 need a
+hand-assembled sensor board. It needs the same Kelvin sense traces as the
+fabricated harness: at 0.1 ohm, one milliohm in the sense path is a one percent
+error.
 
-**Consequence of the third decision, priced here rather than discovered later.**
-VSSOP-10 is 0.5 mm pitch and cannot be breadboarded. Tier 1 and Tier 2 therefore
-need a hand-assembled sensor board rather than a purchased module, and that board
-carries the same Kelvin sense requirement as the fabricated harness, because at
-0.1 ohm one milliohm in the sense path is a one percent error whether the board
-was fabricated or hand-wired.
+**Why the Gray sequence is written before firmware.** The capture engine can read
+the phase bus while it is changing. If only one bit changes per step, a read sees
+the old code or the new one, never a code that was not sent. Writing the sequence
+first found two problems:
 
-**Why the Gray sequence is written before firmware.** The capture engine samples
-the phase bus asynchronously. If two bits change on one transition, a sample
-landing inside it latches a code that was never intended. One bit per transition
-makes a mid-transition sample read the old code or the new one and never a third.
+1. The sequence needs six states per role, not four. Sleep entry is its own phase,
+   and both roles send an acknowledgement (ACK). Five states are impossible,
+   because a cycle of one-bit steps needs an even number of states.
+2. With six states, every code on the bus is meaningful. The `phase` gate
+   therefore counts invalid transitions, not invalid codes.
 
-**What writing it before firmware caught.** Two things, both of which would
-otherwise have been found in Tier 2 against working firmware. The sequence is six
-states per role and not four, because sleep entry is a marked phase in its own
-right and because both roles carry an acknowledgement, and because five states
-cannot close at Hamming distance 1 on any number of bits. And at six states every
-bit pattern on the bus is meaningful, so the `phase` gate's criterion had to move
-from counting invalid codes to counting invalid transitions. Both are recorded in
-`phase_code_map.md`, and the second one edits a gate below.
+Both are recorded in `phase_code_map.md`. The second one changes a gate below.
 
 ---
 
 ## Tier 1: capture engine alone, on breakouts
 
-Nothing here needs the device under test. The load is a resistor. What is under
-test is whether the timing budget survives real interrupt latency and real driver
-overhead, and four of the seven findings that can kill the design are caught in
-this tier, before any fabrication is ordered.
+Nothing here needs the device under test. The load is a resistor. These gates check
+the timing budget against real interrupt delay and driver overhead, before any
+fabrication is ordered.
 
 ### Code built for the selected part runs on it
 
@@ -232,15 +183,6 @@ this tier, before any fabrication is ordered.
 
 **Passes when.** A blink builds with `arm-none-eabi-gcc`, flashes over SWD, and
 is observed running on the board.
-
-**Why this is the first gate of Tier 1 and not the last of Tier 0.** It is the
-first item in this specification that puts a part under power, which is the line
-Tier 0 is defined by. It was written as half of the Tier 0 gate's criterion until
-that gate was split; the argument is in the anomaly that split it.
-
-**Cost of skipping.** Every Tier 1 capture below runs on an image nobody has
-confirmed the part will execute, so a failure to run is indistinguishable from a
-failure to measure.
 
 ### The sensor reaches its rated conversion rate
 
@@ -257,18 +199,14 @@ elapsed time, derived rate.
 sustained ten minutes, with the configuration read back from the device rather
 than assumed from what was written.
 
-**Prediction on record.** The rate follows from the datasheet conversion time and
-nothing else. A rate near half of it means bus-voltage conversion is still
-enabled, which is the power-on default and the single most likely configuration
-error.
-
-**Cost of skipping.** Every sample rate below is asserted against a rate that was
-never confirmed.
+**Prediction on record.** The rate should match the datasheet conversion time
+exactly. A rate near half means bus-voltage conversion is still enabled. That is
+the power-on default and the most likely configuration mistake.
 
 ### The timestamp is taken at the edge and not after the read
 
-**Claim.** The conversion-ready interrupt captures the counter and queues the
-read. The read does not sit inside the interrupt.
+**Claim.** The conversion-ready interrupt only records the counter and queues the
+read. The read itself does not happen inside the interrupt.
 
 **Command.** `mise run jitter`
 
@@ -278,19 +216,15 @@ histogram and its standard deviation.
 **Passes when.** Standard deviation of the interval between consecutive
 timestamps is under 2 microseconds.
 
-**Prediction on record, the failure signature.** If the read is left in the
-interrupt path, the standard deviation lands near 73 microseconds, which is the
-read duration at 400 kHz with the pointer retained. The failure has a recognisable
-value rather than merely a direction, so a wide histogram is diagnosable in one
-glance rather than by bisection.
-
-**Cost of skipping.** Bus latency and its scheduling jitter enter the timebase
-directly, and every phase boundary downstream inherits it.
+**Prediction on record, the failure signature.** If the read stays inside the
+interrupt, the standard deviation will be near 73 microseconds, which is the read
+time at 400 kHz with the pointer retained. A failure has a recognizable value, so
+a wide histogram can be diagnosed directly instead of by trial and error.
 
 ### Two channels on two buses drop nothing
 
-**Claim.** The 52 percent per-bus utilisation derived from the timing budget holds
-in practice with both channels free-running and unsynchronised.
+**Claim.** The 52 percent per-bus utilization from the timing budget holds in
+practice with both channels free-running and not synchronized.
 
 **Command.** `mise run dropped`
 
@@ -300,17 +234,15 @@ their difference per channel.
 **Passes when.** Zero dropped conversions over ten minutes at full rate on both
 channels. Zero, not few. A drop is a bug, not a tolerance.
 
-**Prediction on record.** A 16-bit read with the pointer retained is about 29
-clock periods, 73 microseconds at 400 kHz, against a 140 microsecond conversion.
-Rewriting the pointer each time would be 86 percent and two channels on one bus
-would be 104 percent, which fails outright. If drops appear at two buses, the
-arithmetic is intact and the overhead is in the driver, and the fallback is
-high-speed mode at 2.94 MHz rather than a different sensor.
+**Prediction on record.** A 16-bit read with the pointer retained takes about 29
+clock periods, which is 73 microseconds at 400 kHz, against a 140 microsecond
+conversion. Rewriting the pointer on every read would raise the load to 86
+percent, and two channels on one bus would reach 104 percent, which fails.
+If drops still appear with two buses, the arithmetic is right and the
+overhead is in the driver. The fallback is high-speed mode at 2.94 MHz, not a
+different sensor.
 
-**Cost of skipping.** Discovered after fabrication, this costs a board spin
-rather than an afternoon.
-
-### The host sustains the stream
+### The host keeps up with the stream
 
 **Claim.** 114 kilobytes per second reaches disk without gaps.
 
@@ -322,8 +254,8 @@ rather than an afternoon.
 record count matching the dropped-conversion gate.
 
 **Prediction on record.** 8 bytes per record at 14,286 records per second is 114
-kilobytes per second, which is 1.14 megabits per second on the wire. USB CDC
-carries it with headroom; a UART would need 2 megabaud.
+kilobytes per second, or 1.14 megabits per second on the wire. USB CDC carries
+this with margin. A UART would need 2 megabaud.
 
 ### Timestamps stay monotonic across the counter wrap
 
@@ -337,10 +269,10 @@ timestamps on the host.
 **Passes when.** Timestamps are monotonic across the wrap, with the counter seeded
 near overflow rather than by waiting.
 
-**Prediction on record.** A 32-bit microsecond counter wraps at about 71 minutes
-and a Stage 2 campaign runs longer than that. The extension belongs in the capture
-firmware and never on the host, because a wrap reaching the host unhandled
-produces timestamps that look plausible and are wrong.
+**Prediction on record.** A 32-bit microsecond counter wraps after about 71
+minutes, and a Stage 2 campaign runs longer than that. The wrap must be handled in
+the capture firmware, never on the host. An unhandled wrap that reaches the host
+produces timestamps that look right but are wrong.
 
 ---
 
@@ -361,23 +293,11 @@ legal set is the six edges of the cycle in
 `docs/hardware-harness-v1/phase_code_map.md`, plus armed to wake, plus any code
 to error. Everything else is invalid.
 
-**Prediction on record.** With Gray coding, a sample landing mid-transition reads
-the old code or the new one. Every legal edge changes exactly one bit, so any
-transition of two or three bits at once means either the sequence is not
-Gray-ordered or the marker is writing bits in more than one operation, and both
-are visible in the transition that produced it.
-
-**Why this counts transitions and not codes.** It counted codes while the
-sequence was four states, when four of the eight bit patterns were unused and a
-bad read usually landed on one of them. The closed sequence uses six codes and
-names the other two, so no bit pattern on the bus is meaningless and a criterion
-counting invalid codes would report zero whatever the bus did. The change was
-made by the `spec` commit that closed `choices`, before this gate was written or
-run.
-
-**Note on the marker.** One masked register write, nothing else in the function.
-The ESP-NOW send callback runs from a high-priority Wi-Fi task where the vendor
-documentation states lengthy operations must not happen.
+**Prediction on record.** With Gray coding, a read in the middle of a transition
+sees the old code or the new one. Every legal edge changes exactly one bit. If two
+or three bits change at once, either the sequence is not Gray-ordered or the
+marker writes bits in more than one operation. Both show up in the transition that
+caused them.
 
 ### The link works and the ESP-NOW version is what the contract declared
 
@@ -392,11 +312,8 @@ node, frames sent, frames delivered.
 **Passes when.** Both nodes report the same version, that version equals the
 contract's declaration, and the vendor example delivers frames.
 
-**Why it is here.** This gate verifies a declaration rather than answering an open
-question. A v1.0 receiver given a v2.0 packet longer than
-`ESP_NOW_MAX_IE_DATA_LEN` truncates to the first `ESP_NOW_MAX_IE_DATA_LEN` bytes
-or discards it, and truncation presents as a decode failure rather than a link
-failure. Attributed to the representation, that costs a week.
+**Why it is here.** A v1.0 receiver cuts or drops a v2.0 packet longer than
+`ESP_NOW_MAX_IE_DATA_LEN`. That looks like a decode failure, not a link failure.
 
 ### A radio-disabled image exists with an identical marker path
 
@@ -408,10 +325,6 @@ radio.
 **Passes when.** The image builds, phase markers decode identically to the gate
 above, and no frames appear on air.
 
-**Why it is a separate image.** A runtime flag on one image means the radio-off
-condition and the radio-on condition share code that could differ in the
-condition being tested.
-
 ---
 
 ## Tier 3: the fabricated harness
@@ -420,17 +333,15 @@ condition being tested.
 
 No command. Proved by the gates below.
 
-Three layout requirements are not negotiable and are checked at review before
-Gerbers are exported. High-side sensing on both channels, so one ground is
-continuous across both nodes and the capture engine; low-side would put a shunt in
-each node's ground return and design in an offset between two device grounds.
-Kelvin sense traces meeting the shunt at its own pads and carrying no load
-current, because at 0.1 ohm one milliohm of parasitic in that path is a one
-percent error, comparable to the whole budget. Datasheet input filter if
-transients near the sampling rate are expected.
+Three layout requirements are checked at review, before Gerbers are exported:
 
-Ten boards of one design, not ten of several. Ten boards are spares only if they
-are interchangeable, and interchangeability is the reason for fabricating ten.
+1. High-side sensing on both channels, so one ground is continuous across both
+   nodes and the capture engine.
+2. Kelvin sense traces that meet the shunt at its own pads and carry no load
+   current. At 0.1 ohm, one milliohm in that path is a one percent error.
+3. If transients near the sampling rate are expected, the datasheet input filter.
+
+Ten boards of one design, so any board can replace another.
 
 **Produces.** `results/stage0_incoming.json` with per-board continuity and short
 checks and assigned serial numbers, written by `mise run incoming` before any
@@ -450,14 +361,7 @@ present from both nodes.
 precision resistor and an independent voltmeter, on both channels, and all four
 edge sources present.
 
-**Why all three.** A harness reading the wrong rail, or with its sense resistor on
-the far side of the regulator, or with an unconnected marker, fails none of these
-visibly when only one is checked.
-
-**Cost of skipping.** Every number produced after this point is conditional on a
-harness that was never checked.
-
-### Commanding a change moves the trace, and the markers bracket what they claim
+### Commanding a change moves the trace, and the markers mark the start and end of what they claim
 
 This is one gate with two halves. Neither half is meaningful alone.
 
@@ -475,14 +379,8 @@ and the radio-on against radio-off integrals.
 **Passes when.** The residual from a straight-line fit over at least a decade of
 durations is under 2 percent, and the radio-off transmit integral collapses.
 
-**Why both.** A trace that reproduces a static load is what a correct harness
-produces. It is also what a harness measuring something else that happens to be
-stable produces. The static case alone cannot tell success from total failure. The
-second half is what separates them, and it is the only gate in this file that can
-detect a physically wrong setup, because file existence cannot.
-
-**Cost of skipping.** If the markers are in the wrong place, every phase
-attribution downstream is void and nothing in the data says so.
+**Why both.** A harness measuring something else that happens to be stable also
+reproduces a static load. Only the second half tells the two apart.
 
 **Visual.** `assets/harness_negative_control.png`. Three conditions on one axis:
 static load, commanded busy loop, radio disabled.
@@ -500,15 +398,14 @@ each board, which replaces nominal from this point on.
 **Passes when.** Both figures hold, per channel and between channels.
 
 **Prediction on record.** The channel-to-channel figure is the one that matters. A
-systematic gain error cancels when comparing two conditions on the same channel
-and in the recovered-fraction ratio, but not between channels, and the
-transmit-side against receive-side asymmetry is a stated prediction in the
-thinkbook that a mismatch lands directly on.
+systematic gain error cancels when two conditions are compared on the same
+channel, and in the recovered-fraction ratio. It does not cancel between channels.
+The thinkbook predicts a transmit-side against receive-side asymmetry, and a
+channel mismatch would affect it directly.
 
-**On the reference.** A precision resistor and an independent voltmeter are
-standards. Agreement with another instrument would be a cross-check, and
-traceability runs to standards rather than to instruments. If the meter has a
-four-wire mode, measure the resistor directly and its tolerance drops out.
+**On the reference.** The reference is a precision resistor and an independent
+voltmeter. With a four-wire meter, measure the resistor directly so its tolerance
+no longer matters.
 
 **Visual.** `assets/harness_gain_residuals.png`. Per-channel residual against the
 reference, with the channel-to-channel difference drawn on the same axis.
@@ -528,7 +425,7 @@ at least a decade of widths.
 ### A load toggling near the conversion time survives as a duty cycle
 
 **Claim.** A commanded square wave near 140 microseconds is recorded as a duty
-cycle rather than smeared toward its mean.
+cycle rather than averaged toward its mean.
 
 **Command.** `mise run bandwidth`
 
@@ -536,32 +433,31 @@ cycle rather than smeared toward its mean.
 
 **Passes when.** Duty cycle reproduced within 5 percent.
 
-**Prediction on record.** The front end is delta-sigma and its output is an
-average over the conversion window, so a conversion straddling an edge blends both
-sides. Boundary location therefore carries an intrinsic uncertainty of one
-conversion time. Nothing in the thinkbook depends on locating a boundary more
-precisely, because every term in the cost model is identified across runs rather
-than within one.
+**Prediction on record.** The front end is delta-sigma, so its output is an
+average over the conversion window. A conversion that crosses an edge blends
+both sides. A boundary can therefore only be located to within one conversion
+time. Nothing in the thinkbook needs a more precise boundary, because every term
+in the cost model is found by comparing runs, not within a single run.
 
 ### The supply is constant enough for the rail to be computed
 
-**Claim.** Supply excursion under a transmit burst is small enough that the device
-rail can be computed rather than converted.
+**Claim.** The supply changes so little during a transmit burst that the device
+rail can be computed instead of measured.
 
 **Command.** `mise run supply`
 
 **Produces.** `results/stage0_supply.json`
 
-**Passes when.** Supply excursion under 0.5 percent across a transmit burst,
-measured by periodic bus-voltage conversion at roughly one sample in a hundred,
-with VBUS taken upstream of the shunt.
+**Passes when.** The supply changes by less than 0.5 percent across a transmit
+burst, measured by a bus-voltage reading about once every hundred samples, with
+VBUS taken upstream of the shunt.
 
 **Prediction on record.** Only the supply upstream of the shunt is constant. The
-rail the device sees is that supply minus the shunt drop, 33 millivolts at a 330
-milliamp transmit peak, one percent. The rail per sample is therefore computed as
-supply minus measured current times measured shunt value, and treating the device
-rail itself as constant would put that one percent into every transmit-phase power
-figure.
+rail the device sees is that supply minus the shunt drop, which is 33 millivolts
+(one percent) at a 330 milliamp transmit peak. So the rail for each sample is
+computed as supply minus (measured current times measured shunt value). Treating
+the device rail as constant would add that one percent error to every
+transmit-phase power figure.
 
 **Consequence if it fails.** Bus voltage must be converted every sample, which
 halves the conversion budget and forces high-speed I2C.
@@ -574,35 +470,16 @@ The harness is an instrument when every gate above is closed and `FINDINGS.md`
 exists with each figure naming the file it was read from. Until then it is a board
 that produces numbers.
 
-`assets/harness_segmented_event.png` is drawn last: one event with its phases
-segmented, annotated with its own boundary uncertainty of roughly 140
-microseconds. It is illustrative and no claim rests on it.
+`assets/harness_segmented_event.png` is drawn last and is illustrative only.
 
 ---
 
 ## Standing rules
 
-Tests are silent on success and exit 0.
-
-A capture script may prompt for a reference reading typed from a meter. A test may
-not. A test that prompts is a test whose result depends on who ran it.
-
-Each capture script refuses to start when the file it reads is absent. That
-enforces order and nothing else.
-
-Only the negative control detects a physically wrong setup. No file check, no
-schema, and no assertion on a well-formed capture can substitute for it, because a
-capture written from the wrong rail is well-formed.
-
-Bench actions have no pass criterion. The gate below one is what proves it.
-
-Every asset carries the `harness_` prefix. Assets built without data carry
-`harness_schematic_` instead, so a reader can tell from the filename which kind
-they are holding.
+Every asset has the `harness_` prefix. Assets made without data use
+`harness_schematic_` instead.
 
 An asset is not created before the file it reads from exists.
-
-Measured shunt values replace nominal from the gain gate onward, everywhere.
 
 No energy figure from this harness appears in a commit message, a README, or a
 notebook before the negative control gate is closed.

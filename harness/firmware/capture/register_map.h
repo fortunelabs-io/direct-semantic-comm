@@ -1,20 +1,19 @@
 /*
  * register_map.h - minimal STM32F411CEU6 register map.
  *
- * Only the peripherals this firmware touches: RCC, GPIOA, GPIOB, GPIOC,
- * I2C1, I2C3, TIM2, FLASH interface, and the Cortex-M4 DWT cycle counter.
- * No vendor CMSIS/HAL, per
- * docs/adr/2026-08-12-capture-engine-firmware-is-bare-metal.md.
+ * This header covers RCC, GPIOA, GPIOB, GPIOC,
+ * I2C1, I2C3, TIM2, FLASH interface, and the Cortex-M4 DWT cycle counter configuration,
  *
- * Base addresses and struct offsets checked against DocID026289 Rev 4 and
- * the STM32F4 peripheral memory map. The AHB3 reset and enable registers
- * are folded into the RESERVED arrays below rather than named, since this
- * part has no AHB3 peripherals; the offsets they occupy are still
- * accounted for, which is what the struct layout depends on.
+ * Base addresses are taken from the STM32F411 datasheet (DocID026289 Rev 4)
+ * and the STM32F4 peripheral memory map.  
+ * 
+ * Since this part has no AHB3 peripherals, the AHB3 reset and enable registers are folded into 
+ * the RESERVED arrays, but the space they take up is still counted 
+ * since the struct layout relies on them.
  *
- * Bit positions here are from RM0383. Where a value encodes a field
- * rather than a single bit, the field's position and width are given so a
- * reader can check it without opening the manual.
+ * Every bit position is decided from RM0380 reference manual. 
+ * 
+ * See decision for further reading: 2026-08-12-capture-engine-firmware-is-bare-metal.md.
  */
 #ifndef CAPTURE_ENGINE_REGISTER_MAP_H
 #define CAPTURE_ENGINE_REGISTER_MAP_H
@@ -86,9 +85,9 @@ typedef struct {
 #define RCC_CR_PLLON        (1UL << 24)
 #define RCC_CR_PLLRDY       (1UL << 25)
 
-/* PLLCFGR field positions and widths, RM0383 section 6.3.2. The register
- * holds five separate fields plus reserved bits whose reset values must
- * survive; write it read-modify-write with these masks, never wholesale.
+/* PLLCFGR field positions and widths, based on RM0383 section 6.3.2. 
+ * The register holds five fields plus reserved bits, and those reserved bits 
+ * must keep their reset values.
  *
  * PLLM  bits  5:0   division for the PLL input clock
  * PLLN  bits 14:6   multiplication for the VCO
@@ -155,8 +154,7 @@ typedef struct {
 #define I2C_CR1_PE           (1UL << 0)
 #define I2C_CR1_START        (1UL << 8)
 /* CR2 FREQ is bits 5:0, carrying the APB1 rate in whole MHz (2..50). The
- * value is derived from the clock plan in timing_budget.h, not defined
- * here, so it cannot drift out of agreement with PCLK1. */
+ * value is derived from the clock plan in timing_budget.h. */
 #define I2C_CR2_FREQ_Msk     (0x3FUL << 0)
 
 /* ---- TIM2 (32-bit general purpose timer) ---- */

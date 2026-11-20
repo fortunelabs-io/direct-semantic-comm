@@ -1,34 +1,19 @@
 /*
- * main.c - entry point for the Tier 0 "a blink builds and flashes" check.
- *
- * Not one of the three files the repository map in todos/stage0_todo.md
- * names for firmware/capture/ (timebase.c, sensor.c, stream.c). Those
- * three are the capture engine's actual components; this file is the
- * smallest possible glue that brings them up and proves it on an LED,
- * which is what the gate asks for at Tier 0. Flagged here rather than
- * folded silently into one of the three, since the map did not call for a
- * fourth file.
+ * main.c - just for firmware check right now.
+ * TODO: Tier 1: add INA226 read and USB CDC output.
  */
 #include "register_map.h"
 #include "timebase.h"
 #include "sensor.h"
 
-/* The LED is a property of the board, not of the part, and the gate's
- * criterion is that a blink *flashes* - which means somebody has to see
- * it. Set these three to match the board in hand, at build time:
- *
+/* The LED is a board property, set at build time:
  *   cmake -DLED_PORT_ID=2 -DLED_PIN=13 -DLED_ACTIVE_LOW=1 ...
+ * LED_PORT_ID is 0/1/2 for GPIOA/B/C, because #if cannot evaluate the
+ * pointer casts behind the GPIOx macros.
  *
- * LED_PORT_ID is 0 for GPIOA, 1 for GPIOB, 2 for GPIOC. It is a small
- * integer rather than the GPIOx macro because those expand to pointer
- * casts, which #if cannot evaluate.
- *
- * The default is PC13 active-low, which is the arrangement on the common
- * STM32F411CEU6 breakout boards. It is a default and not a datasheet
- * fact: PC13 is bonded out on UFQFPN48 (pin 2), but whether an LED hangs
- * off it is the board's business. If the blink does not appear, this is
- * the first thing to check and not evidence about the part.
- */
+ * Default is PC13 active-low, common on STM32F411CEU6 breakouts.
+ * If no blink appears, check this first. 
+ * */
 #ifndef LED_PORT_ID
 #define LED_PORT_ID     2
 #endif
@@ -59,7 +44,7 @@ static void led_init(void)
     RCC->AHB1ENR |= LED_PORT_EN;
 
     LED_PORT->MODER &= ~(3UL << (LED_PIN * 2));
-    LED_PORT->MODER |=  (1UL << (LED_PIN * 2)); /* push-pull output */
+    LED_PORT->MODER |=  (1UL << (LED_PIN * 2));
 }
 
 static void led_set(int on)
@@ -67,7 +52,6 @@ static void led_set(int on)
 #if LED_ACTIVE_LOW
     on = !on;
 #endif
-    /* BSRR: bits 15:0 set, bits 31:16 reset. */
     LED_PORT->BSRR = on ? (1UL << LED_PIN) : (1UL << (LED_PIN + 16));
 }
 

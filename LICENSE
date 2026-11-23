@@ -1,0 +1,82 @@
+# Licensing
+
+*This repository is released under two licenses, split by what a file is rather
+than by where it sits. The reasoning is in
+[`docs/adr/2026-11-24-harness-hardware-is-cern-ohl-s-firmware-stays-apache.md`](./docs/adr/2026-11-24-harness-hardware-is-cern-ohl-s-firmware-stays-apache.md).
+Full texts are in [`LICENSES/`](./LICENSES/) and are never edited.*
+
+Copyright 2026 FortuneLabs.
+
+| What | License | SPDX | Text |
+|---|---|---|---|
+| Hardware design: `harness/hardware/`, meaning the KiCad project, custom rules, worksheet, BOM, and fabrication outputs | CERN Open Hardware Licence Version 2, Strongly Reciprocal | `CERN-OHL-S-2.0` | [`LICENSES/CERN-OHL-S-2.0.txt`](./LICENSES/CERN-OHL-S-2.0.txt) |
+| Everything executable: `harness/firmware/`, `harness/scripts/`, `harness/tests/`, `harness/doctor.py`, `harness/hardware/check.py`, host tooling | Apache License 2.0 | `Apache-2.0` | [`LICENSES/Apache-2.0.txt`](./LICENSES/Apache-2.0.txt) |
+| Documentation: `docs/`, `contracts/`, `todos/`, `README` files | Apache-2.0, as above | `Apache-2.0` | |
+
+**Not covered.** The calibration procedure and the Layer 4 test vectors are not
+published. A license states terms for what is released and says nothing about
+what is not.
+
+**Source Location**, as CERN-OHL-S-2.0 §1.9 uses the term:
+`https://github.com/fortunelabs-io/direct-semantic-comm`
+
+---
+
+## Hardware notice
+
+> Copyright 2026 FortuneLabs.
+>
+> This source describes Open Hardware and is licensed under CERN-OHL-S version
+> 2. You may redistribute and modify it and make products using it under the
+> terms of that license, a copy of which is in
+> `LICENSES/CERN-OHL-S-2.0.txt` and at https://ohwr.org/cern_ohl_s_v2.txt.
+>
+> This source is distributed WITHOUT ANY EXPRESS OR IMPLIED WARRANTY, INCLUDING
+> OF MERCHANTABILITY, SATISFACTORY QUALITY AND FITNESS FOR A PARTICULAR PURPOSE.
+> See CERN-OHL-S v2 for applicable conditions.
+>
+> Source Location: https://github.com/fortunelabs-io/direct-semantic-comm
+
+## Firmware and tooling notice
+
+> Copyright 2026 FortuneLabs.
+>
+> Licensed under the Apache License, Version 2.0. You may not use these files
+> except in compliance with that license. A copy is in
+> `LICENSES/Apache-2.0.txt` and at http://www.apache.org/licenses/LICENSE-2.0.
+>
+> Unless required by applicable law or agreed to in writing, software
+> distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+> WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+> License for the specific language governing permissions and limitations under
+> the License.
+
+---
+
+## How the two meet
+
+The firmware and the host tooling are **Available Components** as CERN-OHL-S-2.0
+§1.7(a) defines them: Apache-2.0 is a Compatible Licence under §1.2(c), so they
+stay Apache-2.0 inside a product made from this hardware, and §3.3(d) excludes
+them from the obligation to license a modified whole under CERN-OHL-S. The
+declaration runs one way. Apache-2.0 code may be taken into a CERN-OHL-S design;
+nothing in CERN-OHL-S reaches back onto the firmware.
+
+The INA226AIDGSR and the STM32F411CEU6 are Available Components under §1.7(b)(i),
+being purchasable parts with public datasheets. Neither license reaches inside
+them.
+
+**If you modify the hardware design**, CERN-OHL-S §3.3 asks three things of you:
+retain the notices, add one saying what you changed and when, and publish your
+modified design under CERN-OHL-S with your own Source Location. Conveying a
+board, modified or not, carries the §4 obligation to give each recipient the
+complete design source or the location of it.
+
+**The variant letter matters.** CERN-OHL-2.0 is three separate licenses. This
+hardware is the **S** variant, strongly reciprocal. A reference to
+"CERN-OHL-2.0" without the letter states nothing.
+
+**The version is pinned to 2**, and the notice says so rather than saying "or
+later". Under §8.3 an unversioned variant reference lets a licensee pick any
+version CERN publishes, which is a term this project would not have read.
+Adopting a later version is a later decision, taken against its own text.

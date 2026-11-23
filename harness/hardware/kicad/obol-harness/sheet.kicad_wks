@@ -22,6 +22,7 @@
 		(name "")
 		(start 0 0 ltcorner)
 		(end 0 0)
+		(option page1only)
 		(repeat 2)
 		(incrx 2)
 		(incry 2)
@@ -30,12 +31,14 @@
 		(name "")
 		(start 50 2 ltcorner)
 		(end 50 0 ltcorner)
+		(option page1only)
 		(repeat 30)
 		(incrx 50)
 	)
 	(tbtext "1"
 		(name "")
 		(pos 25 1 ltcorner)
+		(option page1only)
 		(font
 			(size 1.3 1.3)
 		)
@@ -46,12 +49,14 @@
 		(name "")
 		(start 50 2 lbcorner)
 		(end 50 0 lbcorner)
+		(option page1only)
 		(repeat 30)
 		(incrx 50)
 	)
 	(tbtext "1"
 		(name "")
 		(pos 25 1 lbcorner)
+		(option page1only)
 		(font
 			(size 1.3 1.3)
 		)
@@ -62,12 +67,14 @@
 		(name "")
 		(start 0 50 ltcorner)
 		(end 2 50 ltcorner)
+		(option page1only)
 		(repeat 30)
 		(incry 50)
 	)
 	(tbtext "A"
 		(name "")
 		(pos 1 25 ltcorner)
+		(option page1only)
 		(font
 			(size 1.3 1.3)
 		)
@@ -79,12 +86,14 @@
 		(name "")
 		(start 0 50 rtcorner)
 		(end 2 50 rtcorner)
+		(option page1only)
 		(repeat 30)
 		(incry 50)
 	)
 	(tbtext "A"
 		(name "")
 		(pos 1 25 rtcorner)
+		(option page1only)
 		(font
 			(size 1.3 1.3)
 		)
@@ -95,6 +104,7 @@
 	(tbtext "Date: ${ISSUE_DATE}"
 		(name "")
 		(pos 87 6.9)
+		(option page1only)
 		(font
 			(face "Noto Sans CJK HK")
 		)
@@ -103,10 +113,12 @@
 		(name "")
 		(start 110 5.5)
 		(end 2 5.5)
+		(option page1only)
 	)
 	(tbtext "${KICAD_VERSION}"
 		(name "")
 		(pos 109 4.1002)
+		(option page1only)
 		(font
 			(face "KiCad Font")
 		)
@@ -116,16 +128,19 @@
 		(name "")
 		(start 110 8.5)
 		(end 2 8.5)
+		(option page1only)
 	)
 	(tbtext "Rev: ${REVISION}"
 		(name "")
 		(pos 24 6.9)
+		(option page1only)
 		(font
 			(face "Noto Sans CJK HK") bold)
 	)
 	(tbtext "Size: ${PAPER}"
 		(name "")
 		(pos 109 6.9)
+		(option page1only)
 		(font
 			(face "Noto Sans CJK HK")
 		)
@@ -134,16 +149,19 @@
 	(tbtext "Id: ${#}/${##}"
 		(name "")
 		(pos 24 4.1)
+		(option page1only)
 		(comment "Sheet id")
 	)
 	(line
 		(name "")
 		(start 110 12.5)
 		(end 2 12.5)
+		(option page1only)
 	)
 	(tbtext "Title: ${TITLE}"
 		(name "")
 		(pos 109 10.2002)
+		(option page1only)
 		(font
 			(face "Noto Sans CJK HK")
 			(size 2 2) bold italic)
@@ -151,6 +169,7 @@
 	(tbtext "File: ${FILENAME}"
 		(name "")
 		(pos 109 14.3)
+		(option page1only)
 		(font
 			(face "Noto Sans CJK HK")
 		)
@@ -159,10 +178,12 @@
 		(name "")
 		(start 110 18.5)
 		(end 2 18.5)
+		(option page1only)
 	)
 	(tbtext "Sheet: ${SHEETPATH}"
 		(name "")
 		(pos 109 17)
+		(option page1only)
 		(font
 			(face "Noto Sans CJK HK")
 		)
@@ -171,15 +192,18 @@
 		(name "")
 		(start 90 8.5)
 		(end 90 5.5)
+		(option page1only)
 	)
 	(line
 		(name "")
 		(start 26 8.5)
 		(end 26 2)
+		(option page1only)
 	)
 	(tbtext "© 2026 ${OWNER}\nCERN-OHL-S-2.0\n${REPO} \n@ ${GIT_HASH}\n"
 		(name "")
 		(pos 30.489 26.5022)
+		(option page1only)
 		(font
 			(face "Noto Sans CJK HK") bold)
 		(justify center)
@@ -188,10 +212,12 @@
 		(name "")
 		(start 60.489 34.0022)
 		(end 1.989 18.5022)
+		(option page1only)
 	)
 	(bitmap
 		(name "")
 		(pos 85.489 27.0022)
+		(option page1only)
 		(scale 1)
 		(data "iVBORw0KGgoAAAANSUhEUgAAA+gAAAC9CAYAAAAgCFc9AAAACXBIWXMAAFxGAABcRgEUlENBAADK"
 			"6ElEQVR42uydd5hlRbX2f2vVPj0z5KSiIijBBCpgQPSiYEIUE4gBFHO45pxzzul+16xXUTEhmHPA"
@@ -1111,9 +1137,10 @@
 	(tbtext "${ADDRESS}"
 		(name "")
 		(pos 108.989 20.002)
+		(option page1only)
 		(font
 			(face "Noto Sans CJK HK")
-			(size 1 0.8) bold
+			(size 1 1) bold
 			(color 11 61 145 1)
 		)
 	)

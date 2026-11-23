@@ -636,6 +636,7 @@
     ]
   ],
   "text_variables": {
+    "ADDRESS": "Unit 18, 2/F, Building 17W, Science Park, Hong Kong SAR",
     "GIT-HASH": "local",
     "OWNER": "Fortunelabs Limited",
     "REPO": "fortunelabs-io/direct-semantic-communication"
